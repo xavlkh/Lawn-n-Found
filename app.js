@@ -208,6 +208,7 @@ app.get('/reports/new', checkAuthenticated, (req, res) => {
         user: req.session.user,
         categories,
         locations,
+        today: new Date().toISOString().split('T')[0],
         messages: req.flash('success'),
         errors: req.flash('error')
       });
@@ -250,38 +251,82 @@ app.post('/reports', checkAuthenticated, (req, res) => {
     return res.redirect('/reports/new');
   }
 
-  const sql = `
-    INSERT INTO reports
-      (
-        user_id,
-        report_type,
-        item_name,
-        description,
-        category_id,
-        location_id,
-        date_lost_found,
-        status
-      )
-    VALUES (?, ?, ?, ?, ?, ?, ?, 'Open')
+  const categoryId = Number(category_id);
+  const locationId = Number(location_id);
+
+  if (
+    !Number.isInteger(categoryId) ||
+    !Number.isInteger(locationId) ||
+    categoryId <= 0 ||
+    locationId <= 0
+  ) {
+    req.flash('error', 'Invalid category or location.');
+    return res.redirect('/reports/new');
+  }
+
+  if (item_name.trim().length > 150) {
+    req.flash('error', 'Item name cannot exceed 150 characters.');
+    return res.redirect('/reports/new');
+  }
+
+  const optionSql = `
+    SELECT
+      EXISTS(
+        SELECT 1
+        FROM categories
+        WHERE category_id = ?
+      ) AS category_exists,
+
+      EXISTS(
+        SELECT 1
+        FROM locations
+        WHERE location_id = ?
+      ) AS location_exists
   `;
 
-  const values = [
-    req.session.user.user_id,
-    report_type,
-    item_name.trim(),
-    description.trim(),
-    category_id,
-    location_id,
-    date_lost_found
-  ];
-
-  db.query(sql, values, (err, result) => {
-    if (err) {
-      return dbError(res, err);
+  db.query(optionSql, [categoryId, locationId], (optionError, rows) => {
+    if (optionError) {
+      return dbError(res, optionError);
     }
 
-    req.flash('success', 'Your report was created successfully.');
-    res.redirect('/reports/' + result.insertId);
+    if (!rows[0].category_exists || !rows[0].location_exists) {
+      req.flash('error', 'The selected category or location does not exist.');
+      return res.redirect('/reports/new');
+    }
+
+    const insertSql = `
+      INSERT INTO reports
+        (
+          user_id,
+          report_type,
+          item_name,
+          description,
+          category_id,
+          location_id,
+          date_lost_found,
+          status
+        )
+      VALUES (?, ?, ?, ?, ?, ?, ?, 'Open')
+    `;
+
+    const values = [
+      req.session.user.user_id,
+      report_type,
+      item_name.trim(),
+      description.trim(),
+      categoryId,
+      locationId,
+      date_lost_found
+    ];
+
+    db.query(insertSql, values, (insertError, result) => {
+      if (insertError) {
+        return dbError(res, insertError);
+      }
+
+      req.flash('success', 'Your report was created successfully.');
+      res.redirect('/reports/' + result.insertId);
+    });
   });
 });
 
