@@ -31,6 +31,13 @@ db.connect((err) => {
   console.log('Connected to MySQL database.');
 });
 
+// Show a database error on the page instead of crashing the whole server.
+// (Using throw here would kill the Node process and 502 the entire site.)
+function dbError(res, err) {
+  console.error('Database error:', err);
+  return res.status(500).send('Database error: ' + (err.sqlMessage || err.message));
+}
+
 // ---------- View engine & middleware ----------
 app.set('view engine', 'ejs');
 app.use(express.urlencoded({ extended: false }));
@@ -85,7 +92,7 @@ app.get('/login', (req, res) => {
 // Pick a seeded user to "log in" as (DEV ONLY).
 app.get('/dev/login/:id', (req, res) => {
   db.query('SELECT * FROM users WHERE id = ?', [req.params.id], (err, results) => {
-    if (err) throw err;
+    if (err) return dbError(res, err);
     if (results.length > 0) {
       req.session.user = results[0];   // store the user row in the session (L19)
       req.flash('success', 'Logged in as ' + results[0].username + ' (' + results[0].role + ')');
@@ -104,7 +111,7 @@ app.get('/logout', (req, res) => {
 app.get('/', (req, res) => {
   const sql = "SELECT * FROM reports WHERE report_type = 'Found' ORDER BY created_at DESC";
   db.query(sql, (err, reports) => {
-    if (err) throw err;
+    if (err) return dbError(res, err);
     res.render('index', {
       user: req.session.user,
       reports: reports,
@@ -123,7 +130,7 @@ app.get('/', (req, res) => {
 app.get('/claims/submit/:reportId', checkAuthenticated, (req, res) => {
   const sql = 'SELECT * FROM reports WHERE report_id = ?';
   db.query(sql, [req.params.reportId], (err, results) => {
-    if (err) throw err;
+    if (err) return dbError(res, err);
     if (results.length === 0) {
       req.flash('error', 'Report not found.');
       return res.redirect('/');
@@ -151,7 +158,7 @@ app.post('/claims/submit/:reportId', checkAuthenticated, (req, res) => {
 
   // Don't allow claiming an item that is already resolved.
   db.query('SELECT status FROM reports WHERE report_id = ?', [reportId], (err, rows) => {
-    if (err) throw err;
+    if (err) return dbError(res, err);
     if (rows.length === 0) {
       req.flash('error', 'Report not found.');
       return res.redirect('/');
@@ -162,13 +169,13 @@ app.post('/claims/submit/:reportId', checkAuthenticated, (req, res) => {
     }
 
     // Insert the new claim as "Pending".
-    const insert = 'INSERT INTO claims (report_id, id, claim_message, status) VALUES (?, ?, ?, "Pending")';
+    const insert = 'INSERT INTO claims (report_id, user_id, claim_message, status) VALUES (?, ?, ?, "Pending")';
     db.query(insert, [reportId, userId, claim_message], (err2) => {
-      if (err2) throw err2;
+      if (err2) return dbError(res, err2);
 
       // Mark the report as "Claimed" so others can see a claim is in progress.
       db.query("UPDATE reports SET status = 'Claimed' WHERE report_id = ? AND status = 'Open'", [reportId], (err3) => {
-        if (err3) throw err3;
+        if (err3) return dbError(res, err3);
         req.flash('success', 'Claim submitted! An admin will review it.');
         res.redirect('/claims/my');
       });
@@ -181,10 +188,10 @@ app.get('/claims/my', checkAuthenticated, (req, res) => {
   const sql = `SELECT c.*, r.item_name, r.report_type
                FROM claims c
                JOIN reports r ON c.report_id = r.report_id
-               WHERE c.id = ?
+               WHERE c.user_id = ?
                ORDER BY c.created_at DESC`;
   db.query(sql, [req.session.user.id], (err, claims) => {
-    if (err) throw err;
+    if (err) return dbError(res, err);
     res.render('myClaims', {
       user: req.session.user,
       claims: claims,
@@ -199,10 +206,10 @@ app.get('/admin/claims', checkAuthenticated, checkAdmin, (req, res) => {
   const sql = `SELECT c.*, r.item_name, u.username, u.email
                FROM claims c
                JOIN reports r ON c.report_id = r.report_id
-               JOIN users u   ON c.id   = u.id
+               JOIN users u   ON c.user_id = u.id
                ORDER BY (c.status = 'Pending') DESC, c.created_at DESC`;
   db.query(sql, (err, claims) => {
-    if (err) throw err;
+    if (err) return dbError(res, err);
     res.render('adminClaims', {
       user: req.session.user,
       claims: claims,
@@ -218,7 +225,7 @@ app.post('/admin/claims/:claimId/approve', checkAuthenticated, checkAdmin, (req,
 
   // 1. Find the claim so we know which report it belongs to.
   db.query('SELECT * FROM claims WHERE claim_id = ?', [claimId], (err, results) => {
-    if (err) throw err;
+    if (err) return dbError(res, err);
     if (results.length === 0) {
       req.flash('error', 'Claim not found.');
       return res.redirect('/admin/claims');
@@ -227,16 +234,16 @@ app.post('/admin/claims/:claimId/approve', checkAuthenticated, checkAdmin, (req,
 
     // 2. Approve this claim.
     db.query("UPDATE claims SET status = 'Approved' WHERE claim_id = ?", [claimId], (err2) => {
-      if (err2) throw err2;
+      if (err2) return dbError(res, err2);
 
       // 3. Auto-reject every OTHER pending claim for the same report.
       db.query("UPDATE claims SET status = 'Rejected' WHERE report_id = ? AND claim_id != ? AND status = 'Pending'",
         [reportId, claimId], (err3) => {
-          if (err3) throw err3;
+          if (err3) return dbError(res, err3);
 
           // 4. Mark the report as Resolved.
           db.query("UPDATE reports SET status = 'Resolved' WHERE report_id = ?", [reportId], (err4) => {
-            if (err4) throw err4;
+            if (err4) return dbError(res, err4);
             req.flash('success', 'Claim approved. Report resolved and other pending claims rejected.');
             res.redirect('/admin/claims');
           });
@@ -248,7 +255,7 @@ app.post('/admin/claims/:claimId/approve', checkAuthenticated, checkAdmin, (req,
 // ---------- ADMIN: reject a single claim ----------
 app.post('/admin/claims/:claimId/reject', checkAuthenticated, checkAdmin, (req, res) => {
   db.query("UPDATE claims SET status = 'Rejected' WHERE claim_id = ?", [req.params.claimId], (err) => {
-    if (err) throw err;
+    if (err) return dbError(res, err);
     req.flash('success', 'Claim rejected.');
     res.redirect('/admin/claims');
   });
@@ -259,7 +266,7 @@ app.post('/admin/claims/:claimId/reject', checkAuthenticated, checkAdmin, (req, 
 // #####################################################################
 
 // ---------- Start the server ----------
-const PORT = 3000;
+const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`Server running at http://localhost:${PORT}`);
 });
