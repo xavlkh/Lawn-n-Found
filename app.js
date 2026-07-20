@@ -20,7 +20,7 @@ const db = mysql.createConnection({
   host: 'c237-adib-mysql.mysql.database.azure.com',
   user: 'c237_026',
   password: 'c237026@2026!',
-  database: 'c237_026_team2_userdb',
+  database: 'c237_026_team2_ca2',
   ssl: { rejectUnauthorized: false }
 });
 db.connect((err) => {
@@ -91,7 +91,7 @@ app.get('/login', (req, res) => {
 
 // Pick a seeded user to "log in" as (DEV ONLY).
 app.get('/dev/login/:id', (req, res) => {
-  db.query('SELECT * FROM users WHERE id = ?', [req.params.id], (err, results) => {
+  db.query('SELECT * FROM users WHERE user_id = ?', [req.params.id], (err, results) => {
     if (err) return dbError(res, err);
     if (results.length > 0) {
       req.session.user = results[0];   // store the user row in the session (L19)
@@ -147,7 +147,7 @@ app.get('/claims/submit/:reportId', checkAuthenticated, (req, res) => {
 // ---------- STUDENT: handle the claim submission ----------
 app.post('/claims/submit/:reportId', checkAuthenticated, (req, res) => {
   const reportId = req.params.reportId;
-  const userId = req.session.user.id;
+  const userId = req.session.user.user_id;
   const { claim_message } = req.body;
 
   // Server-side validation
@@ -266,7 +266,7 @@ app.post('/reports', checkAuthenticated, (req, res) => {
   `;
 
   const values = [
-    req.session.user_id,
+    req.session.user.user_id,
     report_type,
     item_name.trim(),
     description.trim(),
@@ -285,6 +285,44 @@ app.post('/reports', checkAuthenticated, (req, res) => {
   });
 });
 
+app.get('/reports/:id', (req, res) => {
+  const reportId = req.params.id;
+
+  const sql = `
+    SELECT
+      r.*,
+      c.name AS category_name,
+      l.name AS location_name,
+      u.username AS reporter_name
+    FROM reports r
+    LEFT JOIN categories c
+      ON r.category_id = c.category_id
+    LEFT JOIN locations l
+      ON r.location_id = l.location_id
+    LEFT JOIN users u
+      ON r.user_id = u.id
+    WHERE r.report_id = ?
+  `;
+
+  db.query(sql, [reportId], (err, results) => {
+    if (err) {
+      return dbError(res, err);
+    }
+
+    if (results.length === 0) {
+      req.flash('error', 'Report not found.');
+      return res.redirect('/');
+    }
+
+    res.render('reportDetails', {
+      user: req.session.user,
+      report: results[0],
+      messages: req.flash('success'),
+      errors: req.flash('error')
+    });
+  });
+});
+
 // ---------- STUDENT: view my own claims and their status ----------
 app.get('/claims/my', checkAuthenticated, (req, res) => {
   const sql = `SELECT c.*, r.item_name, r.report_type
@@ -292,7 +330,7 @@ app.get('/claims/my', checkAuthenticated, (req, res) => {
                JOIN reports r ON c.report_id = r.report_id
                WHERE c.user_id = ?
                ORDER BY c.created_at DESC`;
-  db.query(sql, [req.session.user.id], (err, claims) => {
+  db.query(sql, [req.session.user.user_id], (err, claims) => {
     if (err) return dbError(res, err);
     res.render('myClaims', {
       user: req.session.user,
@@ -308,7 +346,7 @@ app.get('/admin/claims', checkAuthenticated, checkAdmin, (req, res) => {
   const sql = `SELECT c.*, r.item_name, u.username, u.email
                FROM claims c
                JOIN reports r ON c.report_id = r.report_id
-               JOIN users u   ON c.user_id = u.id
+               JOIN users u   ON c.user_id = u.user_id
                ORDER BY (c.status = 'Pending') DESC, c.created_at DESC`;
   db.query(sql, (err, claims) => {
     if (err) return dbError(res, err);
