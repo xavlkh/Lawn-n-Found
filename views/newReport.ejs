@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <%- include('partials/head') %>
+  <title>Create Report</title>
+</head>
+<body>
+  <%- include('partials/navbar') %>
+
+  <div class="container mt-4" style="max-width: 700px;">
+    <%- include('partials/messages') %>
+
+    <h2>Create Lost or Found Report</h2>
+
+    <form action="/reports" method="POST">
+      <div class="mb-3">
+        <label for="report_type" class="form-label">Report Type</label>
+        <select id="report_type" name="report_type" class="form-select" required>
+          <option value="">Select a type</option>
+          <option value="Lost">Lost</option>
+          <option value="Found">Found</option>
+        </select>
+      </div>
+
+      <div class="mb-3">
+        <label for="item_name" class="form-label">Item Name</label>
+        <input
+          type="text"
+          id="item_name"
+          name="item_name"
+          class="form-control"
+          maxlength="150"
+          required
+        >
+      </div>
+
+      <div class="mb-3">
+        <label for="description" class="form-label">Description</label>
+        <textarea
+          id="description"
+          name="description"
+          class="form-control"
+          rows="4"
+          required
+        ></textarea>
+      </div>
+
+      <div class="mb-3">
+        <label for="category_id" class="form-label">Category</label>
+        <select id="category_id" name="category_id" class="form-select" required>
+          <option value="">Select a category</option>
+
+          <% categories.forEach(category => { %>
+            <option value="<%= category.category_id %>">
+              <%= category.name %>
+            </option>
+          <% }) %>
+        </select>
+      </div>
+
+      <div class="mb-3">
+        <label for="location_id" class="form-label">Location</label>
+        <select id="location_id" name="location_id" class="form-select" required>
+          <option value="">Select a location</option>
+
+          <% locations.forEach(location => { %>
+            <option value="<%= location.location_id %>">
+              <%= location.name %>
+            </option>
+          <% }) %>
+        </select>
+      </div>
+
+      <div class="mb-3">
+        <label for="date_lost_found" class="form-label">Date Lost or Found</label>
+        <input
+          type="date"
+          id="date_lost_found"
+          name="date_lost_found"
+          class="form-control"
+          required
+        >
+      </div>
+
+      <button type="submit" class="btn btn-primary">Create Report</button>
+      <a href="/" class="btn btn-outline-secondary">Cancel</a>
+    </form>
+  </div>
+</body>
+</html>

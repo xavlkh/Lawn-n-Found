@@ -183,6 +183,108 @@ app.post('/claims/submit/:reportId', checkAuthenticated, (req, res) => {
   });
 });
 
+// =====================================================================
+// PART B - CREATE AND VIEW REPORTS
+// =====================================================================
+
+app.get('/reports/new', checkAuthenticated, (req, res) => {
+  const categorySql =
+    'SELECT category_id, name FROM categories ORDER BY name';
+
+  const locationSql =
+    'SELECT location_id, name FROM locations ORDER BY name';
+
+  db.query(categorySql, (categoryError, categories) => {
+    if (categoryError) {
+      return dbError(res, categoryError);
+    }
+
+    db.query(locationSql, (locationError, locations) => {
+      if (locationError) {
+        return dbError(res, locationError);
+      }
+
+      res.render('newReport', {
+        user: req.session.user,
+        categories,
+        locations,
+        messages: req.flash('success'),
+        errors: req.flash('error')
+      });
+    });
+  });
+});
+
+app.post('/reports', checkAuthenticated, (req, res) => {
+  const {
+    report_type,
+    item_name,
+    description,
+    category_id,
+    location_id,
+    date_lost_found
+  } = req.body;
+
+  const validReportTypes = ['Lost', 'Found'];
+
+  if (
+    !validReportTypes.includes(report_type) ||
+    !item_name?.trim() ||
+    !description?.trim() ||
+    !category_id ||
+    !location_id ||
+    !date_lost_found
+  ) {
+    req.flash('error', 'Please complete all report fields.');
+    return res.redirect('/reports/new');
+  }
+
+  const selectedDate = new Date(date_lost_found);
+  const today = new Date();
+
+  selectedDate.setHours(0, 0, 0, 0);
+  today.setHours(0, 0, 0, 0);
+
+  if (Number.isNaN(selectedDate.getTime()) || selectedDate > today) {
+    req.flash('error', 'The lost or found date cannot be in the future.');
+    return res.redirect('/reports/new');
+  }
+
+  const sql = `
+    INSERT INTO reports
+      (
+        user_id,
+        report_type,
+        item_name,
+        description,
+        category_id,
+        location_id,
+        date_lost_found,
+        status
+      )
+    VALUES (?, ?, ?, ?, ?, ?, ?, 'Open')
+  `;
+
+  const values = [
+    req.session.user_id,
+    report_type,
+    item_name.trim(),
+    description.trim(),
+    category_id,
+    location_id,
+    date_lost_found
+  ];
+
+  db.query(sql, values, (err, result) => {
+    if (err) {
+      return dbError(res, err);
+    }
+
+    req.flash('success', 'Your report was created successfully.');
+    res.redirect('/reports/' + result.insertId);
+  });
+});
+
 // ---------- STUDENT: view my own claims and their status ----------
 app.get('/claims/my', checkAuthenticated, (req, res) => {
   const sql = `SELECT c.*, r.item_name, r.report_type
