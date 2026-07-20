@@ -20,7 +20,7 @@ const db = mysql.createConnection({
   host: 'c237-adib-mysql.mysql.database.azure.com',
   user: 'c237_026',
   password: 'c237026@2026!',
-  database: 'c237_026_team2_userdb',
+  database: 'c237_026_team2_ca2',
   ssl: { rejectUnauthorized: false }
 });
 db.connect((err) => {
@@ -76,29 +76,92 @@ const checkAdmin = (req, res, next) => {
   }
 };
 
-// =====================================================================
-//  TEMP DEV SCAFFOLD  -  remove once Xavier's real auth (Part A) is in.
-//  Real /login and /register are NOT my part; this only lets us set a
-//  session user so the claims workflow can be demonstrated.
-// =====================================================================
+// Done by Xavier
+// Make the logged-in user available to every EJS template
+app.use((req, res, next) => {
+  res.locals.user = req.session.user || null;
+  next();
+});
+
+// Done by Xavier
+// Registration route
+app.get('/register', (req, res) => {
+    res.render('register', { messages: req.flash('error'), formData: req.flash('formData')[0] });
+});
+
+// Done by Xavier
+// Create a middleware function validateRegistration
+const validateRegistration = (req, res, next) => {
+    const { username, email, password } = req.body;
+
+    if (!username || !email || !password) {
+        return res.status(400).send('All fields are required.');
+    }
+    
+    if (password.length < 6) {
+        req.flash('error', 'Password should be at least 6 or more characters long');
+        req.flash('formData', req.body);
+        return res.redirect('/register');
+    }
+    next();
+};
+
+// Done by Xavier
+// Integrate validateRegistration into the register route.
+app.post('/register', validateRegistration, (req, res) => {
+    const role = 'user'
+    const { username, email, password } = req.body;
+
+    const sql = 'INSERT INTO users (username, email, password, role) VALUES (?, ?, SHA1(?), ?)';
+    db.query(sql, [username, email, password, role], (err, result) => {
+        if (err) {
+            throw err;
+        }
+        console.log(result);
+        req.flash('success', 'Registration successful! Please log in.');
+        res.redirect('/login');
+    });
+});
+
+// Done by Xavier
+// Login route
 app.get('/login', (req, res) => {
-  res.render('devLogin', {
+  res.render('login', {
     user: req.session.user,
     messages: req.flash('success'),
     errors: req.flash('error')
   });
 });
 
-// Pick a seeded user to "log in" as (DEV ONLY).
-app.get('/dev/login/:id', (req, res) => {
-  db.query('SELECT * FROM users WHERE id = ?', [req.params.id], (err, results) => {
-    if (err) return dbError(res, err);
-    if (results.length > 0) {
-      req.session.user = results[0];   // store the user row in the session (L19)
-      req.flash('success', 'Logged in as ' + results[0].username + ' (' + results[0].role + ')');
+// Done by Xavier
+// Login route for form submission
+app.post('/login', (req, res) => {
+    const { email, password } = req.body;
+
+    // Validate email and password
+    if (!email || !password) {
+        req.flash('error', 'All fields are required.');
+        return res.redirect('/login');
     }
-    res.redirect('/');
-  });
+
+    const sql = 'SELECT * FROM users WHERE email = ? AND password = SHA1(?)';
+    db.query(sql, [email, password], (err, results) => {
+        if (err) {
+            throw err;
+        }
+
+        if (results.length > 0) {
+            // Successful login
+            req.session.user = results[0]; // store user in session
+            req.flash('success', 'Login successful!');
+            //******** TO DO: Update to redirect users to /dashboard route upon successful log in ********//
+            res.redirect('/');
+        } else {
+            // Invalid credentials
+            req.flash('error', 'Invalid email or password.');
+            res.redirect('/login');
+        }
+    });
 });
 
 app.get('/logout', (req, res) => {
@@ -266,7 +329,7 @@ app.post('/admin/claims/:claimId/reject', checkAuthenticated, checkAdmin, (req, 
 // #####################################################################
 
 // ---------- Start the server ----------
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
   console.log(`Server running at http://localhost:${PORT}`);
 });
