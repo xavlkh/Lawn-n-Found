@@ -84,7 +84,7 @@ app.get('/login', (req, res) => {
 
 // Pick a seeded user to "log in" as (DEV ONLY).
 app.get('/dev/login/:id', (req, res) => {
-  db.query('SELECT * FROM users WHERE user_id = ?', [req.params.id], (err, results) => {
+  db.query('SELECT * FROM users WHERE id = ?', [req.params.id], (err, results) => {
     if (err) throw err;
     if (results.length > 0) {
       req.session.user = results[0];   // store the user row in the session (L19)
@@ -181,7 +181,7 @@ app.get('/claims/my', checkAuthenticated, (req, res) => {
   const sql = `SELECT c.*, r.item_name, r.report_type
                FROM claims c
                JOIN reports r ON c.report_id = r.report_id
-               WHERE c.user_id = ?
+               WHERE c.id = ?
                ORDER BY c.created_at DESC`;
   db.query(sql, [req.session.user.user_id], (err, claims) => {
     if (err) throw err;
