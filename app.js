@@ -331,7 +331,7 @@ app.get('/reports/:id', (req, res) => {
     LEFT JOIN locations l
       ON r.location_id = l.location_id
     LEFT JOIN users u
-      ON r.user_id = u.id
+      ON r.user_id = u.user_id
     WHERE r.report_id = ?
   `;
 

@@ -8,8 +8,8 @@
 --  Run this in MySQL Workbench before starting the app.
 -- =====================================================================
 
-CREATE DATABASE IF NOT EXISTS lawn_found;
-USE lawn_found;
+CREATE DATABASE IF NOT EXISTS c237_026_team2_ca2;
+USE c237_026_team2_ca2;
 
 -- ---------- users  (Part A - Xavier) : minimal version for FK/session ----------
 CREATE TABLE IF NOT EXISTS users (
