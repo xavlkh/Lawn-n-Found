@@ -140,7 +140,7 @@ app.get('/claims/submit/:reportId', checkAuthenticated, (req, res) => {
 // ---------- STUDENT: handle the claim submission ----------
 app.post('/claims/submit/:reportId', checkAuthenticated, (req, res) => {
   const reportId = req.params.reportId;
-  const userId = req.session.user.user_id;
+  const userId = req.session.user.id;
   const { claim_message } = req.body;
 
   // Server-side validation
@@ -162,7 +162,7 @@ app.post('/claims/submit/:reportId', checkAuthenticated, (req, res) => {
     }
 
     // Insert the new claim as "Pending".
-    const insert = 'INSERT INTO claims (report_id, user_id, claim_message, status) VALUES (?, ?, ?, "Pending")';
+    const insert = 'INSERT INTO claims (report_id, id, claim_message, status) VALUES (?, ?, ?, "Pending")';
     db.query(insert, [reportId, userId, claim_message], (err2) => {
       if (err2) throw err2;
 
@@ -183,7 +183,7 @@ app.get('/claims/my', checkAuthenticated, (req, res) => {
                JOIN reports r ON c.report_id = r.report_id
                WHERE c.id = ?
                ORDER BY c.created_at DESC`;
-  db.query(sql, [req.session.user.user_id], (err, claims) => {
+  db.query(sql, [req.session.user.id], (err, claims) => {
     if (err) throw err;
     res.render('myClaims', {
       user: req.session.user,
@@ -199,7 +199,7 @@ app.get('/admin/claims', checkAuthenticated, checkAdmin, (req, res) => {
   const sql = `SELECT c.*, r.item_name, u.username, u.email
                FROM claims c
                JOIN reports r ON c.report_id = r.report_id
-               JOIN users u   ON c.user_id   = u.user_id
+               JOIN users u   ON c.id   = u.id
                ORDER BY (c.status = 'Pending') DESC, c.created_at DESC`;
   db.query(sql, (err, claims) => {
     if (err) throw err;
