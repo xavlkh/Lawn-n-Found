@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <%- include('partials/head') %>
+  <title>Lawn &amp; Found - Found Items</title>
+</head>
+<body>
+  <%- include('partials/navbar') %>
+
+  <div class="container mt-4">
+    <%- include('partials/messages') %>
+
+    <!-- Scaffold banner: this page stands in for Part B's Browse Reports -->
+    <div class="alert alert-secondary small">
+      Demo entry point for <strong>Part E (Claims)</strong>. It lists Found items
+      so you can submit a claim. The full Browse Reports page is Part B.
+    </div>
+
+    <h2 class="mb-3">Found Items</h2>
+
+    <% if (reports.length === 0) { %>
+      <p>No found items reported yet.</p>
+    <% } else { %>
+      <div class="row">
+        <% reports.forEach(report => { %>
+          <div class="col-md-4 mb-3">
+            <div class="card h-100">
+              <div class="card-body">
+                <h5 class="card-title"><%= report.item_name %></h5>
+                <p class="card-text"><%= report.description %></p>
+                <p class="mb-2">
+                  Status:
+                  <span class="badge bg-<%= report.status === 'Resolved' ? 'success' : (report.status === 'Claimed' ? 'warning text-dark' : 'primary') %>">
+                    <%= report.status %>
+                  </span>
+                </p>
+                <% if (report.status === 'Resolved') { %>
+                  <button class="btn btn-secondary btn-sm" disabled>Resolved</button>
+                <% } else { %>
+                  <a href="/claims/submit/<%= report.report_id %>" class="btn btn-primary btn-sm">Submit Claim</a>
+                <% } %>
+              </div>
+            </div>
+          </div>
+        <% }) %>
+      </div>
+    <% } %>
+  </div>
+</body>
+</html>

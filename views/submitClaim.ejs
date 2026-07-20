@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <%- include('partials/head') %>
+  <title>Submit a Claim</title>
+</head>
+<body>
+  <%- include('partials/navbar') %>
+
+  <div class="container mt-4" style="max-width: 640px;">
+    <%- include('partials/messages') %>
+
+    <h2 class="mb-3">Submit a Claim</h2>
+
+    <div class="card mb-3">
+      <div class="card-body">
+        <h5 class="card-title"><%= report.item_name %></h5>
+        <p class="card-text mb-1"><%= report.description %></p>
+        <small class="text-muted">Type: <%= report.report_type %> | Status: <%= report.status %></small>
+      </div>
+    </div>
+
+    <form action="/claims/submit/<%= report.report_id %>" method="POST">
+      <div class="mb-3">
+        <label for="claim_message" class="form-label">
+          Why is this item yours? (describe identifying details as proof)
+        </label>
+        <textarea class="form-control" id="claim_message" name="claim_message" rows="4" required></textarea>
+      </div>
+      <button type="submit" class="btn btn-primary">Submit Claim</button>
+      <a href="/" class="btn btn-outline-secondary">Cancel</a>
+    </form>
+  </div>
+</body>
+</html>

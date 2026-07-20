@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <%- include('partials/head') %>
+  <title>Login (Dev)</title>
+</head>
+<body>
+  <%- include('partials/navbar') %>
+
+  <div class="container mt-4" style="max-width: 520px;">
+    <%- include('partials/messages') %>
+
+    <div class="alert alert-warning small">
+      <strong>Temporary dev login.</strong> Real authentication (Part A) is not
+      built here. Pick a seeded account below just to demo the claims workflow.
+    </div>
+
+    <h2 class="mb-3">Choose an account</h2>
+    <div class="list-group">
+      <a href="/dev/login/2" class="list-group-item list-group-item-action">
+        Login as <strong>Test User</strong> (role: user)
+      </a>
+      <a href="/dev/login/3" class="list-group-item list-group-item-action">
+        Login as <strong>Alvin</strong> (role: user)
+      </a>
+      <a href="/dev/login/1" class="list-group-item list-group-item-action">
+        Login as <strong>Admin</strong> (role: admin)
+      </a>
+    </div>
+  </div>
+</body>
+</html>

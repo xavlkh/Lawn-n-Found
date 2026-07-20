@@ -1,0 +1,17 @@
+{
+  "name": "lawn-n-found-claims",
+  "version": "1.0.0",
+  "description": "Part E - Claims and admin approval workflow (Alvin) for the Lawn & Found Portal",
+  "main": "app.js",
+  "scripts": {
+    "start": "node app.js",
+    "dev": "npx nodemon app.js"
+  },
+  "dependencies": {
+    "connect-flash": "^0.1.1",
+    "ejs": "^3.1.10",
+    "express": "^4.19.2",
+    "express-session": "^1.18.0",
+    "mysql2": "^3.11.0"
+  }
+}

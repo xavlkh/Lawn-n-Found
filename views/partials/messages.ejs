@@ -1,0 +1,7 @@
+<!-- Flash message display (connect-flash) -->
+<% if (messages && messages.length > 0) { %>
+  <div class="alert alert-success"><%= messages %></div>
+<% } %>
+<% if (errors && errors.length > 0) { %>
+  <div class="alert alert-danger"><%= errors %></div>
+<% } %>

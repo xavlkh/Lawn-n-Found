@@ -1,0 +1,22 @@
+<!-- Role-based navigation. Only links to pages that exist in this
+     Part E demo; the full navbar is a shared/Part A concern. -->
+<nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+  <div class="container">
+    <a class="navbar-brand" href="/">Lawn &amp; Found</a>
+    <div class="navbar-nav ms-auto">
+      <a class="nav-link" href="/">Home</a>
+
+      <% if (user) { %>
+        <% if (user.role === 'admin') { %>
+          <a class="nav-link" href="/admin/claims">Manage Claims</a>
+        <% } else { %>
+          <a class="nav-link" href="/claims/my">My Claims</a>
+        <% } %>
+        <span class="nav-link text-info">Hi, <%= user.username %></span>
+        <a class="nav-link" href="/logout">Logout</a>
+      <% } else { %>
+        <a class="nav-link" href="/login">Login</a>
+      <% } %>
+    </div>
+  </div>
+</nav>
