@@ -208,6 +208,161 @@ app.get('/', (req, res) => {
 });
 
 // #####################################################################
+// #####       PART D - SEARCH, FILTERING AND CATEGORIES          #####
+// #####                        (May)                             #####
+// #####################################################################
+//
+//  Built ONLY from patterns taught in class:
+//  - Search form + filter logic  : Lesson 12 "Movie Mood" search
+//    (POST form, req.body, .toLowerCase(), .filter(), .includes())
+//  - SQL SELECT with LEFT JOINs  : same query as the Browse Reports
+//    route in this file (Part B)
+//  - db.query callbacks, ? placeholders, checkAuthenticated, flash
+//    messages : L15-L20 patterns already used throughout this file
+
+// The JOIN query gives every report together with its category name,
+// location name and reporter name (same SQL as the /reports route).
+const searchSql = `
+  SELECT
+    r.*,
+    c.name AS category_name,
+    l.name AS location_name,
+    u.username AS reporter_name
+  FROM reports r
+  LEFT JOIN categories c
+    ON r.category_id = c.category_id
+  LEFT JOIN locations l
+    ON r.location_id = l.location_id
+  LEFT JOIN users u
+    ON r.user_id = u.user_id
+  ORDER BY r.created_at DESC
+`;
+
+// ---------- STEP 1: show the search page (Lesson 12 pattern) ----------
+// First visit: show the form plus ALL reports, so the user can see
+// what is available before filtering.
+app.get('/search', checkAuthenticated, (req, res) => {
+  db.query(searchSql, (err, reports) => {
+    if (err) return dbError(res, err);
+
+    // Load categories and locations from the database so the
+    // dropdowns are never hardcoded.
+    db.query('SELECT category_id, name FROM categories ORDER BY name', (catErr, categories) => {
+      if (catErr) return dbError(res, catErr);
+
+      db.query('SELECT location_id, name FROM locations ORDER BY name', (locErr, locations) => {
+        if (locErr) return dbError(res, locErr);
+
+        res.render('search', {
+          user: req.session.user,
+          reports: reports,
+          categories: categories,
+          locations: locations,
+          // empty filters on first visit, so the form starts blank
+          filters: { searchText: '', report_type: '', category_id: '', location_id: '', status: '', sort: 'newest' },
+          messages: req.flash('success'),
+          errors: req.flash('error')
+        });
+      });
+    });
+  });
+});
+
+// ---------- STEP 2: handle the search (Lesson 12 pattern) ----------
+// The form on search.ejs submits with method="POST", so the values
+// the user typed/chose arrive in req.body.
+app.post('/search', checkAuthenticated, (req, res) => {
+
+  // Read each form field. "|| ''" gives a default empty string
+  // if the field was left blank (same defaulting style as Part B).
+  const searchText = (req.body.searchText || '').toLowerCase();
+  const reportType = req.body.report_type || '';
+  const categoryId = req.body.category_id || '';
+  const locationId = req.body.location_id || '';
+  const status     = req.body.status || '';
+  const sort       = req.body.sort || 'newest';
+
+  // Get every report from the database first (with the JOINs),
+  // then narrow the list down in JavaScript, exactly like the
+  // Lesson 12 movie search narrowed the movies array.
+  db.query(searchSql, (err, reports) => {
+    if (err) return dbError(res, err);
+
+    // KEYWORD SEARCH (Lesson 12: movie.title.toLowerCase().includes(searchText))
+    // .filter() keeps only the reports where the callback returns true.
+    // A report matches if the keyword appears in the item name OR the
+    // description. .toLowerCase() on both sides makes it case-insensitive.
+    let results = reports.filter(report => {
+      return report.item_name.toLowerCase().includes(searchText) ||
+             (report.description || '').toLowerCase().includes(searchText);
+    });
+
+    // FILTER: Lost or Found.
+    // "All" in the dropdown sends an empty value, so the if is skipped
+    // and no filtering happens - "All" really means "do not filter".
+    if (reportType !== '') {
+      results = results.filter(report => report.report_type === reportType);
+    }
+
+    // FILTER: category.
+    // The dropdown sends the id as a string (e.g. "2") but the database
+    // gives a number (2), so String() converts before comparing.
+    if (categoryId !== '') {
+      results = results.filter(report => String(report.category_id) === categoryId);
+    }
+
+    // FILTER: campus location.
+    if (locationId !== '') {
+      results = results.filter(report => String(report.location_id) === locationId);
+    }
+
+    // FILTER: report status (Open / Claimed / Resolved).
+    if (status !== '') {
+      results = results.filter(report => report.status === status);
+    }
+
+    // SORTING: the SQL already returns newest first (ORDER BY created_at
+    // DESC, same as Browse Reports). "Oldest first" simply reverses
+    // the array.
+    if (sort === 'oldest') {
+      results = results.reverse();
+    }
+
+    // Reload the dropdown data, then re-render the same page with the
+    // narrowed results. "filters" is passed back so the form stays
+    // filled in with what the user chose.
+    db.query('SELECT category_id, name FROM categories ORDER BY name', (catErr, categories) => {
+      if (catErr) return dbError(res, catErr);
+
+      db.query('SELECT location_id, name FROM locations ORDER BY name', (locErr, locations) => {
+        if (locErr) return dbError(res, locErr);
+
+        res.render('search', {
+          user: req.session.user,
+          reports: results,
+          categories: categories,
+          locations: locations,
+          filters: {
+            searchText: req.body.searchText || '',
+            report_type: reportType,
+            category_id: categoryId,
+            location_id: locationId,
+            status: status,
+            sort: sort
+          },
+          messages: req.flash('success'),
+          errors: req.flash('error')
+        });
+      });
+    });
+  });
+});
+
+// #####################################################################
+// #####                   END OF PART D                          #####
+// #####################################################################
+
+// #####################################################################
 // #####            PART E - CLAIMS & ADMIN APPROVAL              #####
 // #####                     (Alvin, 25038212)                    #####
 // #####################################################################
