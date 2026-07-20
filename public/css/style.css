@@ -1,7 +1,7 @@
 /* Lawn & Found - minimal overrides (Bootstrap handles the rest) */
 
 body {
-  background-color: #f7f8fa;
+  background-color: #f4f8f5; /* very light green tint (was #f7f8fa) */
 }
 
 /* Subtle card shadow for depth without borders */
@@ -13,4 +13,178 @@ body {
 /* Constrain item-name column so long names don't break table layout */
 .item-name-cell {
   max-width: 250px;
+}
+
+/* =====================================================================
+   "Lawn" green theme (team styling)
+   Plain CSS only (L01). Overrides Bootstrap's default colours so the
+   whole site matches the Lawn & Found name. Bootstrap utility classes
+   use !important internally, so !important is needed to override them.
+===================================================================== */
+
+/* Navbar: forest green instead of default dark */
+.navbar.bg-dark {
+  background-color: #1e4d2b !important;
+}
+
+/* The "Hi, username" text in the navbar: soft light green */
+.navbar .text-info {
+  color: #a8e0b0 !important;
+}
+
+/* Primary buttons: lawn green */
+.btn-primary {
+  background-color: #2d7a3f;
+  border-color: #2d7a3f;
+}
+
+.btn-primary:hover,
+.btn-primary:focus,
+.btn-primary:active {
+  background-color: #256633;
+  border-color: #256633;
+}
+
+/* Outline buttons (View Details): green outline */
+.btn-outline-primary {
+  color: #2d7a3f;
+  border-color: #2d7a3f;
+}
+
+.btn-outline-primary:hover {
+  background-color: #2d7a3f;
+  border-color: #2d7a3f;
+  color: #ffffff;
+}
+
+/* "Open" status badge: green-blue -> lawn green family */
+.badge.bg-primary {
+  background-color: #2d7a3f !important;
+}
+
+/* Links across the site: green instead of Bootstrap blue */
+a {
+  color: #2d7a3f;
+}
+
+a:hover {
+  color: #256633;
+}
+
+/* Form inputs: green focus glow instead of Bootstrap blue */
+.form-control:focus,
+.form-select:focus {
+  border-color: #2d7a3f;
+  box-shadow: 0 0 0 0.25rem rgba(45, 122, 63, 0.25);
+}
+
+/* =====================================================================
+   Site-wide polish (team styling)
+   Refines the Bootstrap look: hover motion and consistency only.
+===================================================================== */
+
+/* All cards lift slightly on hover so they feel clickable */
+.card {
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.12);
+}
+
+/* Buttons get a gentle press/hover feel */
+.btn {
+  transition: transform 0.1s ease, box-shadow 0.1s ease;
+}
+
+.btn:hover {
+  transform: translateY(-1px);
+}
+
+.btn:active {
+  transform: translateY(0);
+}
+
+/* Navbar links brighten smoothly instead of snapping */
+.navbar .nav-link {
+  transition: color 0.15s ease;
+}
+
+/* Form inputs: smooth focus instead of an abrupt outline change */
+.form-control,
+.form-select {
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+/* Item images sit on a clean white base with a soft divider */
+.card-img-top {
+  background-color: #ffffff;
+  border-bottom: 1px solid #eeeeee;
+}
+
+/* Alerts: soft shadow to match the cards */
+.alert {
+  border: none;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+}
+
+/* Consistent heading weight across pages */
+h2 {
+  font-weight: 600;
+}
+
+/* =====================================================================
+   Search page styling (scoped: only affects the search page)
+===================================================================== */
+
+/* Filter card: extra padding and a green accent line matching the theme */
+.search-page .search-filter-card {
+  padding: 1.25rem 1.5rem;
+  border-top: 3px solid #1e4d2b;
+}
+
+/* =====================================================================
+   Search page spacing - spreads the layout out (CSS only, no content
+   changed). Scoped to .search-page so other pages are unaffected.
+===================================================================== */
+
+/* Let the search page breathe wider on big screens */
+.search-page {
+  max-width: 1600px;
+}
+
+/* More room between the header, filter card, and results */
+.search-page .text-center.mb-4 {
+  margin-bottom: 2.5rem !important;
+}
+
+.search-page .search-filter-card {
+  padding: 2rem 2.5rem;
+  margin-bottom: 2.5rem !important;
+}
+
+/* Airier form fields: taller inputs, more gap between filter columns */
+.search-page .search-filter-card .form-control,
+.search-page .search-filter-card .form-select {
+  padding: 0.65rem 0.9rem;
+}
+
+.search-page .search-filter-card .row {
+  row-gap: 1.25rem;
+}
+
+/* More space between the result cards */
+.search-page .row > [class*="col-"] {
+  padding-left: 1.25rem;
+  padding-right: 1.25rem;
+}
+
+.search-page .card {
+  margin-bottom: 2rem !important;
+}
+
+/* Roomier card interiors */
+.search-page .card-body {
+  padding: 1.75rem;
 }
