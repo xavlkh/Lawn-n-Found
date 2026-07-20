@@ -285,6 +285,37 @@ app.post('/reports', checkAuthenticated, (req, res) => {
   });
 });
 
+app.get('/reports', (req, res) => {
+  const sql = `
+    SELECT
+      r.*,
+      c.name AS category_name,
+      l.name AS location_name,
+      u.username AS reporter_name
+    FROM reports r
+    LEFT JOIN categories c
+      ON r.category_id = c.category_id
+    LEFT JOIN locations l
+      ON r.location_id = l.location_id
+    LEFT JOIN users u
+      ON r.user_id = u.user_id
+    ORDER BY r.created_at DESC
+  `;
+
+  db.query(sql, (err, reports) => {
+    if (err) {
+      return dbError(res, err);
+    }
+
+    res.render('reports', {
+      user: req.session.user,
+      reports,
+      messages: req.flash('success'),
+      errors: req.flash('error')
+    });
+  });
+});
+
 app.get('/reports/:id', (req, res) => {
   const reportId = req.params.id;
 
