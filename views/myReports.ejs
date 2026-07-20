@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <%- include('partials/head') %>
+  <title>My Reports</title>
+</head>
+<body>
+  <%- include('partials/navbar') %>
+
+  <div class="container mt-4">
+    <%- include('partials/messages') %>
+
+    <div class="d-flex justify-content-between align-items-center mb-4">
+      <div>
+        <h2 class="mb-1">My Reports</h2>
+        <p class="text-muted mb-0">
+          Reports you have submitted.
+        </p>
+      </div>
+
+      <a href="/reports/new" class="btn btn-primary">
+        Create Report
+      </a>
+    </div>
+
+    <% if (reports.length === 0) { %>
+      <div class="alert alert-info">
+        You have not created any reports yet.
+        <a href="/reports/new" class="alert-link">
+          Create your first report
+        </a>.
+      </div>
+    <% } else { %>
+      <div class="table-responsive">
+        <table class="table table-striped align-middle">
+          <thead>
+            <tr>
+              <th>Item</th>
+              <th>Type</th>
+              <th>Category</th>
+              <th>Location</th>
+              <th>Status</th>
+              <th>Date</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+
+          <tbody>
+            <% reports.forEach(report => { %>
+              <tr>
+                <td><%= report.item_name %></td>
+
+                <td>
+                  <span class="badge bg-<%= report.report_type === 'Lost' ? 'danger' : 'success' %>">
+                    <%= report.report_type %>
+                  </span>
+                </td>
+
+                <td><%= report.category_name || 'Not specified' %></td>
+
+                <td><%= report.location_name || 'Not specified' %></td>
+
+                <td>
+                  <span class="badge bg-<%= report.status === 'Resolved' ? 'secondary' : (report.status === 'Claimed' ? 'warning text-dark' : 'primary') %>">
+                    <%= report.status %>
+                  </span>
+                </td>
+
+                <td>
+                  <%= new Date(report.date_lost_found).toLocaleDateString('en-SG') %>
+                </td>
+
+                <td>
+                  <a
+                    href="/reports/<%= report.report_id %>"
+                    class="btn btn-outline-primary btn-sm"
+                  >
+                    View
+                  </a>
+                </td>
+              </tr>
+            <% }) %>
+          </tbody>
+        </table>
+      </div>
+    <% } %>
+  </div>
+</body>
+</html>
