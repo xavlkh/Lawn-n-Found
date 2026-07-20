@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <%- include('partials/head') %>
+  <title>Manage Users</title>
+</head>
+<body>
+  <%- include('partials/navbar') %>
+
+  <div class="container mt-4">
+    <%- include('partials/messages') %>
+
+    <h2 class="mb-1">Manage Users</h2>
+    <p class="text-muted mb-4">View all registered users and manage their roles.</p>
+
+    <% if (users.length === 0) { %>
+      <div class="alert alert-info">
+        No users found.
+      </div>
+    <% } else { %>
+      <div class="table-responsive">
+        <table class="table table-bordered align-middle">
+          <thead class="table-dark">
+            <tr>
+              <th>ID</th>
+              <th>Username</th>
+              <th>Email</th>
+              <th>Role</th>
+              <th>Joined</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% users.forEach(u => { %>
+              <tr>
+                <td><%= u.user_id %></td>
+                <td><%= u.username %></td>
+                <td><%= u.email %></td>
+                <td>
+                  <span class="badge bg-<%= u.role === 'admin' ? 'primary' : 'secondary' %>">
+                    <%= u.role %>
+                  </span>
+                </td>
+                <td><%= new Date(u.created_at).toLocaleString() %></td>
+                <td>
+                  <% if (u.user_id === user.user_id) { %>
+                    <span class="text-muted">Current user</span>
+                  <% } else { %>
+                    <form action="/admin/users/<%= u.user_id %>/role" method="POST" class="d-inline">
+                      <% if (u.role === 'user') { %>
+                        <input type="hidden" name="role" value="admin">
+                        <button type="submit" class="btn btn-success btn-sm">Make Admin</button>
+                      <% } else { %>
+                        <input type="hidden" name="role" value="user">
+                        <button type="submit" class="btn btn-warning btn-sm">Remove Admin</button>
+                      <% } %>
+                    </form>
+                  <% } %>
+                </td>
+              </tr>
+            <% }) %>
+          </tbody>
+        </table>
+      </div>
+      <p class="text-muted">Total users: <%= users.length %></p>
+    <% } %>
+  </div>
+</body>
+</html>

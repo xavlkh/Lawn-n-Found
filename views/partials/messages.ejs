@@ -1,7 +1,11 @@
 <!-- Flash message display (connect-flash) -->
 <% if (messages && messages.length > 0) { %>
-  <div class="alert alert-success"><%= messages %></div>
+  <% messages.forEach(function(msg) { %>
+    <div class="alert alert-success"><%= msg %></div>
+  <% }) %>
 <% } %>
 <% if (errors && errors.length > 0) { %>
-  <div class="alert alert-danger"><%= errors %></div>
+  <% errors.forEach(function(err) { %>
+    <div class="alert alert-danger"><%= err %></div>
+  <% }) %>
 <% } %>

@@ -2,36 +2,45 @@
 <html lang="en">
 <head>
   <%- include('partials/head') %>
-  <title>Login</title>
+  <title>Register</title>
 </head>
 <body>
-    <%- include('partials/navbar') %>
-    <div class="container">
-        <h1 class="mt-5">Register</h1>
-        <% if (messages && messages.length > 0) { %>
-            <div class="alert alert-danger">
-                <% messages.forEach(function(message) { %>
-                    <p><%= message %></p>
-                <% }); %>
-            </div>
-        <% } %>
-        <form action="/register" method="POST" class="mt-4">
-            <div class="form-group">
-                <label for="username">Username:</label>
-                <input type="text" id="username" name="username" class="form-control" required 
-                <% if (formData && formData.username) { %> value="<%= formData.username %>" <% } else { %> value="" <% } %>>
-            </div>
-            <div class="form-group">
-                <label for="email">Email:</label>
-                <input type="email" id="email" name="email" class="form-control" required 
-                <% if (formData && formData.email) { %> value="<%= formData.email %>" <% } else { %> value="" <% } %>>
-            </div>
-            <div class="form-group">
-                <label for="password">Password:</label>
-                <input type="password" id="password" name="password" class="form-control" required>
-            </div>
-            <br><button type="submit" class="btn btn-primary">Register</button>
+  <%- include('partials/navbar') %>
+
+  <div class="container mt-4" style="max-width: 480px;">
+    <%- include('partials/messages') %>
+
+    <div class="card">
+      <div class="card-body">
+        <h3 class="card-title text-center mb-4">Register</h3>
+
+        <form action="/register" method="POST">
+          <div class="mb-3">
+            <label for="username" class="form-label">Username</label>
+            <input type="text" id="username" name="username" class="form-control" required
+              <% if (formData && formData.username) { %> value="<%= formData.username %>" <% } %>>
+          </div>
+
+          <div class="mb-3">
+            <label for="email" class="form-label">Email</label>
+            <input type="email" id="email" name="email" class="form-control" required
+              <% if (formData && formData.email) { %> value="<%= formData.email %>" <% } %>>
+          </div>
+
+          <div class="mb-3">
+            <label for="password" class="form-label">Password</label>
+            <input type="password" id="password" name="password" class="form-control" required>
+          </div>
+
+          <button type="submit" class="btn btn-primary w-100">Register</button>
         </form>
+
+        <div class="text-center mt-3">
+          <small class="text-muted">Already have an account? <a href="/login">Login</a></small>
+        </div>
+      </div>
     </div>
+    <div class="mb-4"></div>
+  </div>
 </body>
 </html>

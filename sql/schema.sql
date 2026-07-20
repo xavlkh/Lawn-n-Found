@@ -1,10 +1,7 @@
 -- =====================================================================
 --  Lawn & Found Portal  -  Database schema + seed data
---  Scope of THIS file for the demo:
---    * claims        <-- PART E (Alvin) : the resource I own
---    * users, categories, locations, reports  <-- owned by teammates,
---      included here ONLY so the claims table has valid data to join to
---      and the claims flow can be demonstrated on its own.
+--  Tables: users, categories, locations, reports (with images),
+--          claims (with proof images)
 --  Run this in MySQL Workbench before starting the app.
 -- =====================================================================
 
@@ -43,7 +40,7 @@ CREATE TABLE IF NOT EXISTS reports (
   location_id     INT,
   date_lost_found DATE,
   status          ENUM('Open','Claimed','Resolved') NOT NULL DEFAULT 'Open',
-  image_url       VARCHAR(255),
+  image         VARCHAR(500),
   created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -55,6 +52,7 @@ CREATE TABLE IF NOT EXISTS claims (
   report_id     INT NOT NULL,               -- which found item is being claimed
   user_id       INT NOT NULL,               -- the student making the claim
   claim_message TEXT,                        -- proof / why the item is theirs
+  image         VARCHAR(500),                -- proof image for claim
   status        ENUM('Pending','Approved','Rejected') NOT NULL DEFAULT 'Pending',
   created_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (report_id) REFERENCES reports(report_id),
@@ -76,7 +74,7 @@ INSERT INTO locations (name) VALUES
   ('Library'), ('Canteen'), ('Lecture Theatre 1'), ('Sports Hall');
 
 -- A couple of FOUND items so there is something to claim, plus one LOST item.
-INSERT INTO reports (user_id, report_type, item_name, description, category_id, location_id, date_lost_found, status) VALUES
-  (2, 'Found', 'Black Wallet',       'Found a black leather wallet near the library entrance.', 4, 1, '2026-07-15', 'Open'),
-  (2, 'Found', 'Blue Water Bottle',  'Blue metal water bottle left in the canteen.',            3, 2, '2026-07-16', 'Open'),
-  (3, 'Lost',  'Scientific Calculator','Lost my scientific calculator after class.',            1, 3, '2026-07-14', 'Open');
+INSERT INTO reports (user_id, report_type, item_name, description, category_id, location_id, date_lost_found, status, image) VALUES
+  (2, 'Found', 'Black Wallet',       'Found a black leather wallet near the library entrance.', 4, 1, '2026-07-15', 'Open', 'noImage.png'),
+  (2, 'Found', 'Blue Water Bottle',  'Blue metal water bottle left in the canteen.',            3, 2, '2026-07-16', 'Open', 'noImage.png'),
+  (3, 'Lost',  'Scientific Calculator','Lost my scientific calculator after class.',            1, 3, '2026-07-14', 'Open', 'noImage.png');

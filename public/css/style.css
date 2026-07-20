@@ -1,17 +1,16 @@
-/* Lawn & Found - clean, minimal styling */
+/* Lawn & Found - minimal overrides (Bootstrap handles the rest) */
+
 body {
   background-color: #f7f8fa;
 }
 
-.navbar-brand {
-  font-weight: 600;
-}
-
+/* Subtle card shadow for depth without borders */
 .card {
   border: none;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
 }
 
-.container {
-  max-width: 960px;
+/* Constrain item-name column so long names don't break table layout */
+.item-name-cell {
+  max-width: 250px;
 }

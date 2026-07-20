@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <%- include('partials/head') %>
-  <title>Manage Claims</title>
+  <title>My Claims</title>
 </head>
 <body>
   <%- include('partials/navbar') %>
@@ -10,32 +10,30 @@
   <div class="container mt-4">
     <%- include('partials/messages') %>
 
-    <h2 class="mb-1">Manage Claims</h2>
-    <p class="text-muted mb-4">Review and manage user claims on found items.</p>
+    <h2 class="mb-1">My Claims</h2>
+    <p class="text-muted mb-4">Claims you have submitted on found items.</p>
 
     <% if (claims.length === 0) { %>
       <div class="alert alert-info">
-        No claims have been submitted yet.
+        You have not submitted any claims yet.
+        <a href="/" class="alert-link">Browse found items</a>.
       </div>
     <% } else { %>
       <div class="table-responsive">
-        <table class="table table-bordered align-middle">
-          <thead class="table-dark">
+        <table class="table table-striped align-middle">
+          <thead>
             <tr>
               <th>Item</th>
-              <th>Claimed By</th>
-              <th>Message</th>
+              <th>Your Message</th>
               <th>Proof Image</th>
               <th>Status</th>
               <th>Submitted</th>
-              <th>Action</th>
             </tr>
           </thead>
           <tbody>
             <% claims.forEach(claim => { %>
               <tr>
                 <td><%= claim.item_name %></td>
-                <td><%= claim.username %><br><small class="text-muted"><%= claim.email %></small></td>
                 <td><%= claim.claim_message %></td>
                 <td>
                   <% if (claim.image) { %>
@@ -52,18 +50,6 @@
                   </span>
                 </td>
                 <td><%= new Date(claim.created_at).toLocaleString() %></td>
-                <td>
-                  <% if (claim.status === 'Pending') { %>
-                    <form action="/admin/claims/<%= claim.claim_id %>/approve" method="POST" class="d-inline">
-                      <button type="submit" class="btn btn-success btn-sm">Approve</button>
-                    </form>
-                    <form action="/admin/claims/<%= claim.claim_id %>/reject" method="POST" class="d-inline">
-                      <button type="submit" class="btn btn-danger btn-sm">Reject</button>
-                    </form>
-                  <% } else { %>
-                    <span class="text-muted">-</span>
-                  <% } %>
-                </td>
               </tr>
             <% }) %>
           </tbody>

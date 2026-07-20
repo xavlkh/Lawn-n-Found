@@ -11,6 +11,7 @@
     <%- include('partials/messages') %>
 
     <h2 class="mb-3">Submit a Claim</h2>
+    <p class="text-muted"><span class="text-danger">*</span> Required fields</p>
 
     <div class="card mb-3">
       <div class="card-body">
@@ -20,16 +21,31 @@
       </div>
     </div>
 
-    <form action="/claims/submit/<%= report.report_id %>" method="POST">
+    <form action="/user/claims/submit/<%= report.report_id %>" method="POST" enctype="multipart/form-data">
       <div class="mb-3">
         <label for="claim_message" class="form-label">
-          Why is this item yours? (describe identifying details as proof)
+          Why is this item yours? (describe identifying details as proof) <span class="text-danger">*</span>
         </label>
         <textarea class="form-control" id="claim_message" name="claim_message" rows="4" required></textarea>
       </div>
+
+      <div class="mb-3">
+        <label for="image" class="form-label">Proof Photo <span class="text-danger">*</span></label>
+        <input
+          type="file"
+          id="image"
+          name="image"
+          class="form-control"
+          accept="image/jpeg,image/png,image/gif,image/webp"
+          required
+        >
+        <div class="form-text">Accepted formats: JPEG, PNG, GIF, WebP. Max 5 MB.</div>
+      </div>
+
       <button type="submit" class="btn btn-primary">Submit Claim</button>
-      <a href="/" class="btn btn-outline-secondary">Cancel</a>
+      <a href="/reports/<%= report.report_id %>" class="btn btn-outline-secondary">Cancel</a>
     </form>
+    <div class="mb-4"></div>
   </div>
 </body>
 </html>
