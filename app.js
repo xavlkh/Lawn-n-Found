@@ -350,7 +350,6 @@ const searchSql = `
     ON r.location_id = l.location_id
   LEFT JOIN users u
     ON r.user_id = u.user_id
-    WHERE r.status = 'Open'
   ORDER BY r.created_at DESC
 `;
 
@@ -708,12 +707,29 @@ const reportsSql = `
     ON r.location_id = l.location_id
   LEFT JOIN users u
     ON r.user_id = u.user_id
-    WHERE r.status = 'Open'
   ORDER BY r.created_at DESC
 `;
 
 app.get('/', (req, res) => {
-  db.query(reportsSql, (err, reports) => {
+  // PART D - Default to showing only Open reports (May)
+  const defaultSql = `
+    SELECT
+      r.*,
+      c.name AS category_name,
+      l.name AS location_name,
+      u.username AS reporter_name
+    FROM reports r
+    LEFT JOIN categories c
+      ON r.category_id = c.category_id
+    LEFT JOIN locations l
+      ON r.location_id = l.location_id
+    LEFT JOIN users u
+      ON r.user_id = u.user_id
+    WHERE r.status = 'Open'
+    ORDER BY r.created_at DESC
+  `;
+
+  db.query(defaultSql, (err, reports) => {
     if (err) return dbError(res, err);
 
     db.query('SELECT category_id, name FROM categories ORDER BY name', (catErr, categories) => {
@@ -727,7 +743,7 @@ app.get('/', (req, res) => {
           reports,
           categories,
           locations,
-          filters: { searchText: '', report_type: '', category_id: '', location_id: '', status: '', sort: 'newest' },
+          filters: { searchText: '', report_type: '', category_id: '', location_id: '', status: 'Open', sort: 'newest' },
           messages: req.flash('success'),
           errors: req.flash('error')
         });
@@ -741,10 +757,34 @@ app.post('/', (req, res) => {
   const reportType = req.body.report_type || '';
   const categoryId = req.body.category_id || '';
   const locationId = req.body.location_id || '';
-  const status     = req.body.status || '';
+  const status     = req.body.status;
   const sort       = req.body.sort || 'newest';
 
-  db.query(reportsSql, (err, reports) => {
+  // PART D - SQL with optional status filter (May): "All" shows everything, otherwise filter by selected status
+  let filteredSql = `
+    SELECT
+      r.*,
+      c.name AS category_name,
+      l.name AS location_name,
+      u.username AS reporter_name
+    FROM reports r
+    LEFT JOIN categories c
+      ON r.category_id = c.category_id
+    LEFT JOIN locations l
+      ON r.location_id = l.location_id
+    LEFT JOIN users u
+      ON r.user_id = u.user_id
+  `;
+
+  const params = [];
+  if (status !== '') {
+    filteredSql += ' WHERE r.status = ?';
+    params.push(status);
+  }
+
+  filteredSql += ' ORDER BY r.created_at DESC';
+
+  db.query(filteredSql, params, (err, reports) => {
     if (err) return dbError(res, err);
 
     // PART D - SEARCH (May): keyword match on item name OR description
@@ -764,10 +804,6 @@ app.post('/', (req, res) => {
     // PART D - FILTER: Location (May)
     if (locationId !== '') {
       results = results.filter(report => String(report.location_id) === locationId);
-    }
-    // PART D - FILTER: Status (May)
-    if (status !== '') {
-      results = results.filter(report => report.status === status);
     }
     // PART D - SORT (May): oldest first reverses the list
     if (sort === 'oldest') {
