@@ -194,20 +194,6 @@ app.get('/logout', (req, res) => {
   res.redirect('/');
 });
 
-// Scaffold home page: lists FOUND items so a user can submit a claim.
-// (The real Browse Reports page is Benny's Part B.)
-app.get('/', (req, res) => {
-  const sql = "SELECT * FROM reports WHERE report_type = 'Found' ORDER BY created_at DESC";
-  db.query(sql, (err, reports) => {
-    if (err) return dbError(res, err);
-    res.render('index', {
-      user: req.session.user,
-      reports: reports,
-      messages: req.flash('success'),
-      errors: req.flash('error')
-    });
-  });
-});
 
 // Part C - Update and Delete Reports - Done by Ahmad.\\
 // Update
@@ -335,6 +321,163 @@ app.post('/reports/delete/:id', checkAuthenticated, (req, res) => {
     });
 });
 // Part C Done.
+
+// #####################################################################
+// #####       PART D - SEARCH, FILTERING AND CATEGORIES          #####
+// #####                        (May)                             #####
+// #####################################################################
+//
+//  Built ONLY from patterns taught in class:
+//  - Search form + filter logic  : Lesson 12 "Movie Mood" search
+//    (POST form, req.body, .toLowerCase(), .filter(), .includes())
+//  - SQL SELECT with LEFT JOINs  : same query as the Browse Reports
+//    route in this file (Part B)
+//  - db.query callbacks, ? placeholders, checkAuthenticated, flash
+//    messages : L15-L20 patterns already used throughout this file
+
+// The JOIN query gives every report together with its category name,
+// location name and reporter name (same SQL as the /reports route).
+const searchSql = `
+  SELECT
+    r.*,
+    c.name AS category_name,
+    l.name AS location_name,
+    u.username AS reporter_name
+  FROM reports r
+  LEFT JOIN categories c
+    ON r.category_id = c.category_id
+  LEFT JOIN locations l
+    ON r.location_id = l.location_id
+  LEFT JOIN users u
+    ON r.user_id = u.user_id
+    WHERE r.status = 'Open'
+  ORDER BY r.created_at DESC
+`;
+
+// ---------- STEP 1: show the search page (Lesson 12 pattern) ----------
+// First visit: show the form plus ALL reports, so the user can see
+// what is available before filtering.
+app.get('/search', checkAuthenticated, (req, res) => {
+  db.query(searchSql, (err, reports) => {
+    if (err) return dbError(res, err);
+
+    // Load categories and locations from the database so the
+    // dropdowns are never hardcoded.
+    db.query('SELECT category_id, name FROM categories ORDER BY name', (catErr, categories) => {
+      if (catErr) return dbError(res, catErr);
+
+      db.query('SELECT location_id, name FROM locations ORDER BY name', (locErr, locations) => {
+        if (locErr) return dbError(res, locErr);
+
+        res.render('search', {
+          user: req.session.user,
+          reports: reports,
+          categories: categories,
+          locations: locations,
+          // empty filters on first visit, so the form starts blank
+          filters: { searchText: '', report_type: '', category_id: '', location_id: '', status: '', sort: 'newest' },
+          messages: req.flash('success'),
+          errors: req.flash('error')
+        });
+      });
+    });
+  });
+});
+
+// ---------- STEP 2: handle the search (Lesson 12 pattern) ----------
+// The form on search.ejs submits with method="POST", so the values
+// the user typed/chose arrive in req.body.
+app.post('/search', checkAuthenticated, (req, res) => {
+
+  // Read each form field. "|| ''" gives a default empty string
+  // if the field was left blank (same defaulting style as Part B).
+  const searchText = (req.body.searchText || '').toLowerCase();
+  const reportType = req.body.report_type || '';
+  const categoryId = req.body.category_id || '';
+  const locationId = req.body.location_id || '';
+  const status     = req.body.status || '';
+  const sort       = req.body.sort || 'newest';
+
+  // Get every report from the database first (with the JOINs),
+  // then narrow the list down in JavaScript, exactly like the
+  // Lesson 12 movie search narrowed the movies array.
+  db.query(searchSql, (err, reports) => {
+    if (err) return dbError(res, err);
+
+    // KEYWORD SEARCH (Lesson 12: movie.title.toLowerCase().includes(searchText))
+    // .filter() keeps only the reports where the callback returns true.
+    // A report matches if the keyword appears in the item name OR the
+    // description. .toLowerCase() on both sides makes it case-insensitive.
+    let results = reports.filter(report => {
+      return report.item_name.toLowerCase().includes(searchText) ||
+             (report.description || '').toLowerCase().includes(searchText);
+    });
+
+    // FILTER: Lost or Found.
+    // "All" in the dropdown sends an empty value, so the if is skipped
+    // and no filtering happens - "All" really means "do not filter".
+    if (reportType !== '') {
+      results = results.filter(report => report.report_type === reportType);
+    }
+
+    // FILTER: category.
+    // The dropdown sends the id as a string (e.g. "2") but the database
+    // gives a number (2), so String() converts before comparing.
+    if (categoryId !== '') {
+      results = results.filter(report => String(report.category_id) === categoryId);
+    }
+
+    // FILTER: campus location.
+    if (locationId !== '') {
+      results = results.filter(report => String(report.location_id) === locationId);
+    }
+
+    // FILTER: report status (Open / Claimed / Resolved).
+    if (status !== '') {
+      results = results.filter(report => report.status === status);
+    }
+
+    // SORTING: the SQL already returns newest first (ORDER BY created_at
+    // DESC, same as Browse Reports). "Oldest first" simply reverses
+    // the array.
+    if (sort === 'oldest') {
+      results = results.reverse();
+    }
+
+    // Reload the dropdown data, then re-render the same page with the
+    // narrowed results. "filters" is passed back so the form stays
+    // filled in with what the user chose.
+    db.query('SELECT category_id, name FROM categories ORDER BY name', (catErr, categories) => {
+      if (catErr) return dbError(res, catErr);
+
+      db.query('SELECT location_id, name FROM locations ORDER BY name', (locErr, locations) => {
+        if (locErr) return dbError(res, locErr);
+
+        res.render('search', {
+          user: req.session.user,
+          reports: results,
+          categories: categories,
+          locations: locations,
+          filters: {
+            searchText: req.body.searchText || '',
+            report_type: reportType,
+            category_id: categoryId,
+            location_id: locationId,
+            status: status,
+            sort: sort
+          },
+          messages: req.flash('success'),
+          errors: req.flash('error')
+        });
+      });
+    });
+  });
+});
+
+// #####################################################################
+// #####                   END OF PART D                          #####
+// #####################################################################
+
 // #####################################################################
 // #####            PART E - CLAIMS & ADMIN APPROVAL              #####
 // #####                     (Alvin, 25038212)                    #####
@@ -389,14 +532,16 @@ app.post('/user/claims/submit/:reportId', checkAuthenticated, upload.single('ima
       if (err2) return dbError(res, err2);
 
       // Mark the report as "Claimed" so others can see a claim is in progress.
-      db.query("UPDATE reports SET status = 'Claimed' WHERE report_id = ? AND status = 'Open'", [reportId], (err3) => {
-        if (err3) return dbError(res, err3);
+    db.query(insert, [reportId, userId, claim_message, image], (err2) => {
+        if (err2) return dbError(res, err2);
+
         req.flash('success', 'Claim submitted! An admin will review it.');
         res.redirect('/user/claims');
+        });
       });
     });
   });
-});
+
 
 // =====================================================================
 // PART B - CREATE AND VIEW REPORTS (Benny)
@@ -563,10 +708,11 @@ const reportsSql = `
     ON r.location_id = l.location_id
   LEFT JOIN users u
     ON r.user_id = u.user_id
+    WHERE r.status = 'Open'
   ORDER BY r.created_at DESC
 `;
 
-app.get('/reports', (req, res) => {
+app.get('/', (req, res) => {
   db.query(reportsSql, (err, reports) => {
     if (err) return dbError(res, err);
 
@@ -590,7 +736,7 @@ app.get('/reports', (req, res) => {
   });
 });
 
-app.post('/reports', (req, res) => {
+app.post('/', (req, res) => {
   const searchText = (req.body.searchText || '').toLowerCase();
   const reportType = req.body.report_type || '';
   const categoryId = req.body.category_id || '';
@@ -723,6 +869,370 @@ app.get('/reports/:id', (req, res) => {
     });
   });
 });
+
+// -------Add lost-item notification routes (show "I Found This Item" form)
+app.get(
+  '/user/lost-item-alerts/submit/:reportId',
+  checkAuthenticated,
+  (req, res) => {
+    const sql = `
+      SELECT *
+      FROM reports
+      WHERE report_id = ?
+    `;
+
+    db.query(sql, [req.params.reportId], (err, results) => {
+      if (err) return dbError(res, err);
+
+      if (results.length === 0) {
+        req.flash('error', 'Report not found.');
+        return res.redirect('/');
+      }
+
+      const report = results[0];
+
+      if (report.report_type !== 'Lost') {
+        req.flash(
+          'error',
+          'The “I Found This Item” feature is only for lost reports.'
+        );
+        return res.redirect('/reports/' + report.report_id);
+      }
+
+      if (report.status !== 'Open') {
+        req.flash('error', 'This lost-item report is already resolved.');
+        return res.redirect('/');
+      }
+
+      if (report.user_id === req.session.user.user_id) {
+        req.flash('error', 'You cannot send a found alert to yourself.');
+        return res.redirect('/reports/' + report.report_id);
+      }
+
+      res.render('userSubmitFoundNotification', {
+        report,
+        messages: req.flash('success'),
+        errors: req.flash('error')
+      });
+    });
+  }
+);
+
+//------ Save the notification------------
+
+app.post(
+  '/user/lost-item-alerts/submit/:reportId',
+  checkAuthenticated,
+  upload.single('image'),
+  (req, res) => {
+    const reportId = req.params.reportId;
+    const finderId = req.session.user.user_id;
+    const message = (req.body.message || '').trim();
+    const image = req.file ? req.file.filename : null;
+
+    if (message.length < 10) {
+      req.flash(
+        'error',
+        'Please provide at least 10 characters of information.'
+      );
+      return res.redirect(
+        '/user/lost-item-alerts/submit/' + reportId
+      );
+    }
+
+    const reportSql = `
+      SELECT report_id, user_id, report_type, status
+      FROM reports
+      WHERE report_id = ?
+    `;
+
+    db.query(reportSql, [reportId], (reportError, reports) => {
+      if (reportError) return dbError(res, reportError);
+
+      if (reports.length === 0) {
+        req.flash('error', 'Report not found.');
+        return res.redirect('/');
+      }
+
+      const report = reports[0];
+
+      if (report.report_type !== 'Lost' || report.status !== 'Open') {
+        req.flash('error', 'This lost report is no longer active.');
+        return res.redirect('/');
+      }
+
+      if (report.user_id === finderId) {
+        req.flash('error', 'You cannot send a found alert to yourself.');
+        return res.redirect('/reports/' + reportId);
+      }
+
+      const duplicateSql = `
+        SELECT notification_id
+        FROM found_notifications
+        WHERE report_id = ?
+          AND finder_id = ?
+          AND status = 'Pending'
+      `;
+
+      db.query(
+        duplicateSql,
+        [reportId, finderId],
+        (duplicateError, existingNotifications) => {
+          if (duplicateError) return dbError(res, duplicateError);
+
+          if (existingNotifications.length > 0) {
+            req.flash(
+              'error',
+              'You already sent a notification for this lost item.'
+            );
+            return res.redirect('/reports/' + reportId);
+          }
+
+          const insertSql = `
+            INSERT INTO found_notifications
+              (report_id, finder_id, message, image, status)
+            VALUES (?, ?, ?, ?, 'Pending')
+          `;
+
+          db.query(
+            insertSql,
+            [reportId, finderId, message, image],
+            (insertError) => {
+              if (insertError) return dbError(res, insertError);
+
+              req.flash(
+                'success',
+                'The owner has been informed that you may have found the item.'
+              );
+
+              res.redirect('/reports/' + reportId);
+            }
+          );
+        }
+      );
+    });
+  }
+);
+
+//----Display notification received by owner---------
+app.get(
+  '/user/lost-item-alerts',
+  checkAuthenticated,
+  (req, res) => {
+    const sql = `
+      SELECT
+        n.*,
+        r.item_name,
+        r.status AS report_status,
+        u.username AS finder_name
+      FROM found_notifications n
+      JOIN reports r
+        ON n.report_id = r.report_id
+      JOIN users u
+        ON n.finder_id = u.user_id
+      WHERE r.user_id = ?
+      ORDER BY
+        (n.status = 'Pending') DESC,
+        n.created_at DESC
+    `;
+
+    db.query(sql, [req.session.user.user_id], (err, notifications) => {
+      if (err) return dbError(res, err);
+
+      res.render('userLostItemAlerts', {
+        notifications,
+        messages: req.flash('success'),
+        errors: req.flash('error')
+      });
+    });
+  }
+);
+
+//------Owner confirms the item was recovered ----
+
+app.post(
+  '/user/lost-item-alerts/:notificationId/confirm',
+  checkAuthenticated,
+  (req, res) => {
+    const notificationId = req.params.notificationId;
+
+    const selectSql = `
+      SELECT
+        n.notification_id,
+        n.report_id,
+        n.status AS notification_status,
+        r.user_id AS owner_id,
+        r.report_type,
+        r.status AS report_status
+      FROM found_notifications n
+      JOIN reports r
+        ON n.report_id = r.report_id
+      WHERE n.notification_id = ?
+    `;
+
+    db.query(selectSql, [notificationId], (selectError, rows) => {
+      if (selectError) return dbError(res, selectError);
+
+      if (rows.length === 0) {
+        req.flash('error', 'Notification not found.');
+        return res.redirect('/user/lost-item-alerts');
+      }
+
+      const notification = rows[0];
+
+      if (notification.owner_id !== req.session.user.user_id) {
+        req.flash('error', 'You are not the owner of this report.');
+        return res.redirect('/user/lost-item-alerts');
+      }
+
+      if (
+        notification.report_type !== 'Lost' ||
+        notification.report_status !== 'Open' ||
+        notification.notification_status !== 'Pending'
+      ) {
+        req.flash('error', 'This notification can no longer be confirmed.');
+        return res.redirect('/user/lost-item-alerts');
+      }
+
+      db.query(
+        `
+          UPDATE found_notifications
+          SET status = 'Confirmed'
+          WHERE notification_id = ?
+        `,
+        [notificationId],
+        (confirmError) => {
+          if (confirmError) return dbError(res, confirmError);
+
+          db.query(
+            `
+              UPDATE found_notifications
+              SET status = 'Dismissed'
+              WHERE report_id = ?
+                AND notification_id != ?
+                AND status = 'Pending'
+            `,
+            [notification.report_id, notificationId],
+            (dismissError) => {
+              if (dismissError) return dbError(res, dismissError);
+
+              db.query(
+                `
+                  UPDATE reports
+                  SET status = 'Resolved'
+                  WHERE report_id = ?
+                `,
+                [notification.report_id],
+                (reportError) => {
+                  if (reportError) return dbError(res, reportError);
+
+                  req.flash(
+                    'success',
+                    'Item recovery confirmed. The report is now resolved.'
+                  );
+
+                  res.redirect('/user/lost-item-alerts');
+                }
+              );
+            }
+          );
+        }
+      );
+    });
+  }
+);
+
+
+// --------Owner dismisses an incorrect notification-------
+app.post(
+  '/user/lost-item-alerts/:notificationId/dismiss',
+  checkAuthenticated,
+  (req, res) => {
+    const notificationId = req.params.notificationId;
+
+    const selectSql = `
+      SELECT
+        n.notification_id,
+        n.status,
+        r.user_id AS owner_id
+      FROM found_notifications n
+      JOIN reports r
+        ON n.report_id = r.report_id
+      WHERE n.notification_id = ?
+    `;
+
+    db.query(selectSql, [notificationId], (selectError, rows) => {
+      if (selectError) return dbError(res, selectError);
+
+      if (
+        rows.length === 0 ||
+        rows[0].owner_id !== req.session.user.user_id
+      ) {
+        req.flash('error', 'Notification not found or access denied.');
+        return res.redirect('/user/lost-item-alerts');
+      }
+
+      if (rows[0].status !== 'Pending') {
+        req.flash('error', 'This notification has already been handled.');
+        return res.redirect('/user/lost-item-alerts');
+      }
+
+      db.query(
+        `
+          UPDATE found_notifications
+          SET status = 'Dismissed'
+          WHERE notification_id = ?
+        `,
+        [notificationId],
+        (updateError) => {
+          if (updateError) return dbError(res, updateError);
+
+          req.flash('success', 'The notification was dismissed.');
+          res.redirect('/user/lost-item-alerts');
+        }
+      );
+    });
+  }
+);
+
+//------"Mark as Recovered (owner may recover an item by himself)"
+app.post(
+  '/reports/:id/mark-recovered',
+  checkAuthenticated,
+  (req, res) => {
+    const reportId = req.params.id;
+    const userId = req.session.user.user_id;
+
+    const sql = `
+      UPDATE reports
+      SET status = 'Resolved'
+      WHERE report_id = ?
+        AND user_id = ?
+        AND report_type = 'Lost'
+        AND status = 'Open'
+    `;
+
+    db.query(sql, [reportId, userId], (err, result) => {
+      if (err) return dbError(res, err);
+
+      if (result.affectedRows === 0) {
+        req.flash(
+          'error',
+          'The report was not found, is already resolved, or does not belong to you.'
+        );
+        return res.redirect('/user/reports');
+      }
+
+      req.flash(
+        'success',
+        'The item was marked as recovered and the report is now resolved.'
+      );
+
+      res.redirect('/user/reports');
+    });
+  }
+);
+
 
 // ---------- STUDENT: view my own claims and their status ----------
 app.get('/user/claims', checkAuthenticated, (req, res) => {

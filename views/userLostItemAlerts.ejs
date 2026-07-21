@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <%- include('partials/head') %>
+  <title>Lost Item Alerts</title>
+</head>
+<body>
+  <%- include('partials/navbar') %>
+
+  <div class="container mt-4">
+    <%- include('partials/messages') %>
+
+    <h2>Lost Item Alerts</h2>
+
+    <p class="text-muted">
+      Messages from users who may have found items you reported lost.
+    </p>
+
+    <% if (notifications.length === 0) { %>
+      <div class="alert alert-info">
+        You have not received any lost-item alerts.
+      </div>
+    <% } else { %>
+      <div class="table-responsive">
+        <table class="table table-bordered align-middle">
+          <thead>
+            <tr>
+              <th>Lost Item</th>
+              <th>Found By</th>
+              <th>Message</th>
+              <th>Photo</th>
+              <th>Status</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+
+          <tbody>
+            <% notifications.forEach(notification => { %>
+              <tr>
+                <td>
+                  <a href="/reports/<%= notification.report_id %>">
+                    <%= notification.item_name %>
+                  </a>
+                </td>
+
+                <td><%= notification.finder_name %></td>
+
+                <td><%= notification.message %></td>
+
+                <td>
+                  <% if (notification.image) { %>
+                    <a
+                      href="/images/<%= notification.image %>"
+                      target="_blank"
+                    >
+                      View Photo
+                    </a>
+                  <% } else { %>
+                    <span class="text-muted">No photo</span>
+                  <% } %>
+                </td>
+
+                <td>
+                  <%= notification.status %>
+                </td>
+
+                <td>
+                  <% if (
+                    notification.status === 'Pending' &&
+                    notification.report_status === 'Open'
+                  ) { %>
+                    <form
+                      action="/user/lost-item-alerts/<%= notification.notification_id %>/confirm"
+                      method="POST"
+                      class="d-inline"
+                    >
+                      <button
+                        type="submit"
+                        class="btn btn-success btn-sm"
+                      >
+                        Confirm Recovery
+                      </button>
+                    </form>
+
+                    <form
+                      action="/user/lost-item-alerts/<%= notification.notification_id %>/dismiss"
+                      method="POST"
+                      class="d-inline"
+                    >
+                      <button
+                        type="submit"
+                        class="btn btn-outline-danger btn-sm"
+                      >
+                        Not My Item
+                      </button>
+                    </form>
+                  <% } else { %>
+                    <span class="text-muted">Handled</span>
+                  <% } %>
+                </td>
+              </tr>
+            <% }) %>
+          </tbody>
+        </table>
+      </div>
+    <% } %>
+  </div>
+</body>
+</html>

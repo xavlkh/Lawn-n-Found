@@ -14,3 +14,21 @@ body {
 .item-name-cell {
   max-width: 250px;
 }
+
+/* Keep report detail actions solid and visually stable on hover. */
+.report-details-btn {
+  transition: none;
+}
+
+.report-details-btn:hover {
+  color: #fff;
+  background-color: #0d6efd;
+  border-color: #0d6efd;
+}
+
+/* Keep report images contained within the details card. */
+.report-detail-image {
+  max-height: 420px;
+  object-fit: contain;
+  background-color: #fff;
+}

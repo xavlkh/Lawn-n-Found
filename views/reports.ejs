@@ -10,23 +10,30 @@
   <div class="container mt-4">
     <%- include('partials/messages') %>
 
-    <div class="d-flex justify-content-between align-items-center mb-4">
-      <div>
-        <h2 class="mb-1">Lost and Found Reports</h2>
-        <p class="text-muted mb-0">
-          Search by keyword, then narrow down with the filters. All filters combine.
-        </p>
-      </div>
+    <header class="text-center py-3 mb-3">
+      <h1 class="display-4 fw-bold mb-3">Lost and Found Reports</h1>
+      <p class="fs-4 fw-bold text-secondary mb-0">
+        Search by keyword, then narrow down with the filters. All filters combine.
+      </p>
+    </header>
 
-      <% if (user) { %>
-        <a href="/reports/new" class="btn btn-primary">
+    <% if (user) { %>
+      <div class="d-flex justify-content-end mb-3">
+        <a href="/reports/new" class="btn btn-primary btn-lg">
           Create Report
         </a>
-      <% } %>
-    </div>
+      </div>
+    <% } %>
 
+<<<<<<< HEAD
     <!-- PART D - search, filter & categories form (May) -->
     <form action="/reports" method="POST" class="card card-body mb-4">
+=======
+    <!-- ==============================================================
+         PART D (May) - FILTER FORM
+    =============================================================== -->
+    <form action="/" method="POST" class="card card-body mb-4">
+>>>>>>> feature/benny-homepage-reports
       <div class="row g-3">
 
         <!-- PART D - search (May) -->
@@ -96,7 +103,7 @@
 
         <div class="col-md-4 d-flex align-items-end gap-2">
           <button type="submit" class="btn btn-primary">Search</button>
-          <a href="/reports" class="btn btn-outline-secondary">Clear Filters</a>
+          <a href="/" class="btn btn-outline-secondary">Clear Filters</a>
         </div>
 
       </div>
@@ -136,6 +143,7 @@
                     : report.description %>
                 </p>
 
+<<<<<<< HEAD
                 <div class="small text-muted mb-3">
                   <div>
                     <strong>Category:</strong>
@@ -159,6 +167,12 @@
                 </div>
 
                 <a href="/reports/<%= report.report_id %>" class="btn btn-outline-primary mt-auto">
+=======
+                <a
+                  href="/reports/<%= report.report_id %>"
+                  class="btn btn-primary report-details-btn mt-auto"
+                >
+>>>>>>> feature/benny-homepage-reports
                   View Details
                 </a>
               </div>
