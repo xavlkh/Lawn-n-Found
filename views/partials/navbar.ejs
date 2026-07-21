@@ -14,7 +14,7 @@
         <ul class="navbar-nav ms-auto" style="--bs-scroll-height: 100px;">
 
           <li class="nav-item">
-            <a class="nav-link" href="/reports">Home</a>
+            <a class="nav-link" href="/">Home</a>
           </li>
 
           <% if (user) { %>
@@ -28,6 +28,7 @@
                             <li><a class="dropdown-item" href="/admin/users">Manage Users</a></li>              
                       <% } else { %>
                             <li><a class="dropdown-item" href="/user/reports">My Reports</a></li>
+                            <li><a class="dropdown-item" href="/user/lost-item-alerts">Lost Item Alerts</a></li>
                             <li><a class="dropdown-item" href="/user/claims">My Claims</a></li>                 
                       <% } %>                                                    
                       <li><hr class="dropdown-divider"></li>

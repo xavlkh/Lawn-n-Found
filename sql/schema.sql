@@ -39,9 +39,27 @@ CREATE TABLE IF NOT EXISTS reports (
   category_id     INT,
   location_id     INT,
   date_lost_found DATE,
-  status          ENUM('Open','Claimed','Resolved') NOT NULL DEFAULT 'Open',
+  status          ENUM('Open','Resolved') NOT NULL DEFAULT 'Open',
   image         VARCHAR(500),
   created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS found_notifications (
+  notification_id INT AUTO_INCREMENT PRIMARY KEY,
+  report_id       INT NOT NULL,
+  finder_id       INT NOT NULL,
+  message         TEXT NOT NULL,
+  image           VARCHAR(500),
+  status          ENUM('Pending', 'Confirmed', 'Dismissed')
+                  NOT NULL DEFAULT 'Pending',
+  created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+  FOREIGN KEY (report_id)
+    REFERENCES reports(report_id)
+    ON DELETE CASCADE,
+
+  FOREIGN KEY (finder_id)
+    REFERENCES users(user_id)
 );
 
 -- ======================================================================
