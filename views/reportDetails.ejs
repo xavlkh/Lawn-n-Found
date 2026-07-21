@@ -55,13 +55,13 @@
               <dd class="col-sm-7"><%= report.location_name || 'Not specified' %></dd>
 
               <dt class="col-sm-5">Date Lost or Found</dt>
-              <dd class="col-sm-7"><%= new Date(report.date_lost_found).toLocaleDateString('en-SG') %></dd>
+              <dd class="col-sm-7"><%= new Date(report.date_lost_found).toLocaleDateString('en-SG', { day: '2-digit', month: '2-digit', year: '2-digit' }) %></dd>
 
               <dt class="col-sm-5">Reported By</dt>
               <dd class="col-sm-7"><%= report.reporter_name || 'Unknown user' %></dd>
 
               <dt class="col-sm-5">Created</dt>
-              <dd class="col-sm-7"><%= new Date(report.created_at).toLocaleString('en-SG') %></dd>
+              <dd class="col-sm-7"><%= new Date(report.created_at).toLocaleString('en-SG', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' }) %></dd>
             </dl>
 
             <% if (user && report.status === 'Open') { %>
