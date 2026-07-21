@@ -23,6 +23,7 @@
           <thead class="table-dark">
             <tr>
               <th>Item</th>
+              <th>Item Image</th>
               <th>Claimed By</th>
               <th>Message</th>
               <th>Proof Image</th>
@@ -35,6 +36,15 @@
             <% claims.forEach(claim => { %>
               <tr>
                 <td><%= claim.item_name %></td>
+                <td>
+                  <% if (claim.report_image) { %>
+                    <a href="/images/<%= claim.report_image %>" target="_blank">
+                      <img src="/images/<%= claim.report_image %>" alt="<%= claim.item_name %>" style="max-width: 80px; max-height: 80px; border-radius: 4px;">
+                    </a>
+                  <% } else { %>
+                    <span class="text-muted">No image</span>
+                  <% } %>
+                </td>
                 <td><%= claim.username %><br><small class="text-muted"><%= claim.email %></small></td>
                 <td><%= claim.claim_message %></td>
                 <td>
@@ -50,6 +60,9 @@
                   <span class="badge bg-<%= claim.status === 'Approved' ? 'success' : (claim.status === 'Rejected' ? 'danger' : 'warning text-dark') %>">
                     <%= claim.status %>
                   </span>
+                  <% if (claim.status === 'Rejected' && claim.reject_reason) { %>
+                    <div class="small text-muted mt-1">Reason: <%= claim.reject_reason %></div>
+                  <% } %>
                 </td>
                 <td><%= new Date(claim.created_at).toLocaleString() %></td>
                 <td>
@@ -57,8 +70,9 @@
                     <form action="/admin/claims/<%= claim.claim_id %>/approve" method="POST" class="d-inline">
                       <button type="submit" class="btn btn-success btn-sm">Approve</button>
                     </form>
-                    <form action="/admin/claims/<%= claim.claim_id %>/reject" method="POST" class="d-inline">
-                      <button type="submit" class="btn btn-danger btn-sm">Reject</button>
+                    <form action="/admin/claims/<%= claim.claim_id %>/reject" method="POST" style="min-width: 160px;">
+                      <input type="text" name="reject_reason" class="form-control form-control-sm mt-1" placeholder="Reason (optional)">
+                      <button type="submit" class="btn btn-danger btn-sm mt-1">Reject</button>
                     </form>
                   <% } else { %>
                     <span class="text-muted">-</span>

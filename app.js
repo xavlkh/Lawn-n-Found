@@ -1272,7 +1272,7 @@ app.post(
 
 // ---------- STUDENT: view my own claims and their status ----------
 app.get('/user/claims', checkAuthenticated, (req, res) => {
-  const sql = `SELECT c.*, r.item_name, r.report_type
+  const sql = `SELECT c.*, r.item_name, r.report_type, r.image AS report_image
                FROM claims c
                JOIN reports r ON c.report_id = r.report_id
                WHERE c.user_id = ?
@@ -1290,7 +1290,7 @@ app.get('/user/claims', checkAuthenticated, (req, res) => {
 
 // ---------- ADMIN: view and manage all claims ----------
 app.get('/admin/claims', checkAuthenticated, checkAdmin, (req, res) => {
-  const sql = `SELECT c.*, r.item_name, u.username, u.email
+  const sql = `SELECT c.*, r.item_name, r.image AS report_image, u.username, u.email
                FROM claims c
                JOIN reports r ON c.report_id = r.report_id
                JOIN users u   ON c.user_id = u.user_id
@@ -1323,8 +1323,9 @@ app.post('/admin/claims/:claimId/approve', checkAuthenticated, checkAdmin, (req,
     db.query("UPDATE claims SET status = 'Approved' WHERE claim_id = ?", [claimId], (err2) => {
       if (err2) return dbError(res, err2);
 
-      // 3. Auto-reject every OTHER pending claim for the same report.
-      db.query("UPDATE claims SET status = 'Rejected' WHERE report_id = ? AND claim_id != ? AND status = 'Pending'",
+      // 3. Auto-reject every OTHER pending claim for the same report,
+      //    giving them a reason so those students know why.
+      db.query("UPDATE claims SET status = 'Rejected', reject_reason = 'Another claim was approved for this item.' WHERE report_id = ? AND claim_id != ? AND status = 'Pending'",
         [reportId, claimId], (err3) => {
           if (err3) return dbError(res, err3);
 
@@ -1339,13 +1340,17 @@ app.post('/admin/claims/:claimId/approve', checkAuthenticated, checkAdmin, (req,
   });
 });
 
-// ---------- ADMIN: reject a single claim ----------
+// ---------- ADMIN: reject a single claim (with a reason) ----------
 app.post('/admin/claims/:claimId/reject', checkAuthenticated, checkAdmin, (req, res) => {
-  db.query("UPDATE claims SET status = 'Rejected' WHERE claim_id = ?", [req.params.claimId], (err) => {
-    if (err) return dbError(res, err);
-    req.flash('success', 'Claim rejected.');
-    res.redirect('/admin/claims');
-  });
+  // The admin can type a reason in the reject form; store it so the student
+  // can see why their claim was rejected. Empty reason is stored as null.
+  const reason = req.body.reject_reason ? req.body.reject_reason : null;
+  db.query("UPDATE claims SET status = 'Rejected', reject_reason = ? WHERE claim_id = ?",
+    [reason, req.params.claimId], (err) => {
+      if (err) return dbError(res, err);
+      req.flash('success', 'Claim rejected.');
+      res.redirect('/admin/claims');
+    });
 });
 
 // ---------- ADMIN: view and manage all users ----------
