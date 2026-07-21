@@ -14,13 +14,6 @@
         </li>
 
         <% if (user) { %>
-          <!-- Part D (May): search & filter page -->
-          <li class="nav-item">
-            <a class="nav-link" href="/search">Search</a>
-          </li>
-        <% } %>
-
-        <% if (user) { %>
           <% if (user.role === 'admin') { %>
             <!-- admin exclusive navbar -->
             <li class="nav-item">
