@@ -26,14 +26,16 @@ const storage = multer.diskStorage({
 const upload = multer({ storage: storage });
 
 // ---------- Database connection (mysql2) ----------
-const db = mysql.createConnection({
+const db = mysql.createPool({
   host: 'c237-adib-mysql.mysql.database.azure.com',
   user: 'c237_026',
   password: 'c237026@2026!',
   database: 'c237_026_team2_ca2',
-  ssl: { rejectUnauthorized: false }
+  ssl: { rejectUnauthorized: false },
+  enableKeepAlive: true,
+  keepAliveInitialDelay: 0
 });
-db.connect((err) => {
+db.getConnection((err) => {
   if (err) {
     console.error('Database connection failed:', err);
     return;
