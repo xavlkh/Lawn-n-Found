@@ -72,6 +72,7 @@ CREATE TABLE IF NOT EXISTS claims (
   claim_message TEXT,                        -- proof / why the item is theirs
   image         VARCHAR(500),                -- proof image for claim
   status        ENUM('Pending','Approved','Rejected') NOT NULL DEFAULT 'Pending',
+  reject_reason VARCHAR(255),                -- admin's reason when a claim is rejected
   created_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (report_id) REFERENCES reports(report_id),
   FOREIGN KEY (user_id)   REFERENCES users(user_id)

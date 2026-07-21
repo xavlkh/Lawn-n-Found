@@ -36,6 +36,7 @@
           <thead>
             <tr>
               <th>Item</th>
+              <th>Image</th>
               <th>Type</th>
               <th>Category</th>
               <th>Location</th>
@@ -49,6 +50,16 @@
             <% reports.forEach(report => { %>
               <tr>
                 <td class="item-name-cell" title="<%= report.item_name %>"><%= report.item_name %></td>
+
+                <td>
+                  <% if (report.image) { %>
+                    <a href="/images/<%= report.image %>" target="_blank">
+                      <img src="/images/<%= report.image %>" alt="<%= report.item_name %>" style="max-width: 70px; max-height: 70px; border-radius: 4px;">
+                    </a>
+                  <% } else { %>
+                    <span class="text-muted">No image</span>
+                  <% } %>
+                </td>
 
                 <td>
                   <span class="badge bg-<%= report.report_type === 'Lost' ? 'danger' : 'success' %>">
