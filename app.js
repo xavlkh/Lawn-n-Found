@@ -207,6 +207,133 @@ app.get('/', (req, res) => {
   });
 });
 
+// Part C - Update and Delete Reports - Done by Ahmad.\\
+// Update
+app.get('/update/:id', checkAuthenticated, (req, res) => {
+    const reportId = req.params.id;
+
+    // Get the report
+    const reportSql = "SELECT * FROM reports WHERE report_id = ?";
+
+    db.query(reportSql, [reportId], (err, reports) => {
+        if (err) return dbError(res, err);
+
+        if (reports.length === 0) {
+            req.flash("error", "Report not found.");
+            return res.redirect("/reports");
+        }
+
+        // Get categories
+        db.query(
+            "SELECT category_id, name FROM categories ORDER BY name",
+            (catErr, categories) => {
+                if (catErr) return dbError(res, catErr);
+
+                // Get locations
+                db.query(
+                    "SELECT location_id, name FROM locations ORDER BY name",
+                    (locErr, locations) => {
+                        if (locErr) return dbError(res, locErr);
+
+                        res.render("updatereport", {
+                            user: req.session.user,
+                            report: reports[0],
+                            categories,
+                            locations,
+                            today: new Date().toISOString().split("T")[0],
+                            messages: req.flash("success"),
+                            errors: req.flash("error")
+                        });
+                    }
+                );
+            }
+        );
+    });
+});
+
+app.post('/update/:id', checkAuthenticated, upload.single('image'), (req, res) => {
+    const reportId = req.params.id;
+
+    const {
+        report_type,
+        item_name,
+        description,
+        category_id,
+        location_id,
+        date_lost_found
+    } = req.body;
+
+    let sql;
+    let values;
+
+    if (req.file) {
+        sql = `
+            UPDATE reports
+            SET report_type=?,
+                item_name=?,
+                description=?,
+                category_id=?,
+                location_id=?,
+                date_lost_found=?,
+                image=?
+            WHERE report_id=?`;
+
+        values = [
+            report_type,
+            item_name,
+            description,
+            category_id,
+            location_id,
+            date_lost_found,
+            req.file.filename,
+            reportId
+        ];
+    } else {
+        sql = `
+            UPDATE reports
+            SET report_type=?,
+                item_name=?,
+                description=?,
+                category_id=?,
+                location_id=?,
+                date_lost_found=?
+            WHERE report_id=?`;
+
+        values = [
+            report_type,
+            item_name,
+            description,
+            category_id,
+            location_id,
+            date_lost_found,
+            reportId
+        ];
+    }
+
+    db.query(sql, values, (err) => {
+        if (err) return dbError(res, err);
+
+        req.flash("success", "Report updated successfully.");
+        res.redirect("/reports/" + reportId);
+    });
+});
+// Delete
+app.post('/reports/delete/:id', checkAuthenticated, (req, res) => {
+    const reportId = req.params.id;
+
+    const sql = "DELETE FROM reports WHERE report_id = ?";
+
+    db.query(sql, [reportId], (err) => {
+        if (err) {
+            return dbError(res, err);
+        }
+
+        req.flash("success", "Report deleted successfully.");
+        res.redirect("/reports");
+    });
+});
+// Part C Done.
+
 // #####################################################################
 // #####       PART D - SEARCH, FILTERING AND CATEGORIES          #####
 // #####                        (May)                             #####
