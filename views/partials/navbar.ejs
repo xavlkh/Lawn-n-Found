@@ -9,11 +9,8 @@
         <span class="navbar-toggler-icon"></span>
     </button>
     <div class="collapse navbar-collapse" id="collapsibleNavbar">
-        <!-- <ul class="navbar-nav ms-auto"> -->
 
-
-
-        <ul class="navbar-nav ms-auto" style="--bs-scroll-height: 100px;">
+      <ul class="navbar-nav ms-auto" style="--bs-scroll-height: 100px;">
 
           <li class="nav-item">
             <a class="nav-link" href="/">Home</a>
@@ -47,7 +44,7 @@
                             <li>
                               <a class="dropdown-item d-flex justify-content-between align-items-center" href="/user/lost-item-alerts">
                                 Lost Item Alerts
-                                <% if (pendingAlerts > 0) { %><span class="badge bg-danger rounded-pill"><%= pendingAlerts %></span><% } %>
+                                <% if (pendingAlerts > 0) { %><span class="badge bg-danger rounded-pill ms-2"><%= pendingAlerts %></span><% } %>
                               </a>
                             </li>
                             <li><a class="dropdown-item" href="/user/claims">My Claims</a></li>

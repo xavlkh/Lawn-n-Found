@@ -4,6 +4,7 @@
 //  search (Part D), claims & admin approval (Part E - Alvin, 25038212)
 // =====================================================================
 
+require('dotenv').config();
 const express = require('express');
 const mysql = require('mysql2');
 const session = require('express-session');
@@ -27,10 +28,10 @@ const upload = multer({ storage: storage });
 
 // ---------- Database connection (mysql2) ----------
 const db = mysql.createPool({
-  host: 'c237-adib-mysql.mysql.database.azure.com',
-  user: 'c237_026',
-  password: 'c237026@2026!',
-  database: 'c237_026_team2_ca2',
+  host: process.env.DB_HOST,
+  user: process.env.DB_USER,
+  password: process.env.DB_PASSWORD,
+  database: process.env.DB_NAME,
   ssl: { rejectUnauthorized: false },
   enableKeepAlive: true,
   keepAliveInitialDelay: 0
