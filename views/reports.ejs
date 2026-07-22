@@ -145,12 +145,16 @@
                     report.report_type === 'Found' &&
                     user.user_id !== report.user_id
                   ) { %>
-                    <a
-                      href="/user/claims/submit/<%= report.report_id %>"
-                      class="btn btn-success"
-                    >
-                      Claim This Item
-                    </a>
+                    <% if (claimedReportIds && claimedReportIds.includes(report.report_id)) { %>
+                      <button class="btn btn-outline-success" disabled>Claim Submitted</button>
+                    <% } else { %>
+                      <a
+                        href="/user/claims/submit/<%= report.report_id %>"
+                        class="btn btn-success"
+                      >
+                        Claim This Item
+                      </a>
+                    <% } %>
                   <% } %>
                 </div>
               </div>

@@ -69,12 +69,16 @@
                   report.report_type === 'Found' &&
                   user.user_id !== report.user_id
                 ) { %>
-                  <a
-                    href="/user/claims/submit/<%= report.report_id %>"
-                    class="btn btn-primary"
-                  >
-                    Claim This Item
-                  </a>
+                  <% if (alreadyClaimed) { %>
+                    <button class="btn btn-outline-primary" disabled>Claim Submitted</button>
+                  <% } else { %>
+                    <a
+                      href="/user/claims/submit/<%= report.report_id %>"
+                      class="btn btn-primary"
+                    >
+                      Claim This Item
+                    </a>
+                  <% } %>
                 <% } %>
 
                 <% if (

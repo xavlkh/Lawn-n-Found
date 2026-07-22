@@ -526,13 +526,22 @@ app.post('/user/claims/submit/:reportId', checkAuthenticated, upload.single('ima
       return res.redirect('/');
     }
 
-    // Insert the new claim as "Pending".
-    const insert = 'INSERT INTO claims (report_id, user_id, claim_message, image, status) VALUES (?, ?, ?, ?, "Pending")';
-    db.query(insert, [reportId, userId, claim_message, image], (err2) => {
-      if (err2) return dbError(res, err2);
+    // Prevent the same user from claiming the same item more than once.
+    db.query('SELECT claim_id FROM claims WHERE report_id = ? AND user_id = ?', [reportId, userId], (dupErr, existing) => {
+      if (dupErr) return dbError(res, dupErr);
+      if (existing.length > 0) {
+        req.flash('error', 'You have already submitted a claim for this item.');
+        return res.redirect('/user/claims');
+      }
 
-      req.flash('success', 'Claim submitted! An admin will review it.');
-      res.redirect('/user/claims');
+      // Insert the new claim as "Pending".
+      const insert = 'INSERT INTO claims (report_id, user_id, claim_message, image, status) VALUES (?, ?, ?, ?, "Pending")';
+      db.query(insert, [reportId, userId, claim_message, image], (err2) => {
+        if (err2) return dbError(res, err2);
+
+        req.flash('success', 'Claim submitted! An admin will review it.');
+        res.redirect('/user/claims');
+      });
     });
   });
 });
@@ -720,14 +729,22 @@ app.get('/', (req, res) => {
       db.query('SELECT location_id, name FROM locations ORDER BY name', (locErr, locations) => {
         if (locErr) return dbError(res, locErr);
 
-        res.render('reports', {
-          user: req.session.user,
-          reports,
-          categories,
-          locations,
-          filters: { searchText: '', report_type: '', category_id: '', location_id: '', status: '', sort: 'newest' },
-          messages: req.flash('success'),
-          errors: req.flash('error')
+        // report_ids the logged-in user has already claimed (0 = guest -> none)
+        const uid = req.session.user ? req.session.user.user_id : 0;
+        db.query('SELECT report_id FROM claims WHERE user_id = ?', [uid], (clErr, claimRows) => {
+          if (clErr) return dbError(res, clErr);
+          const claimedReportIds = claimRows.map(c => c.report_id);
+
+          res.render('reports', {
+            user: req.session.user,
+            reports,
+            categories,
+            locations,
+            claimedReportIds,
+            filters: { searchText: '', report_type: '', category_id: '', location_id: '', status: '', sort: 'newest' },
+            messages: req.flash('success'),
+            errors: req.flash('error')
+          });
         });
       });
     });
@@ -772,21 +789,29 @@ app.post('/', (req, res) => {
       db.query('SELECT location_id, name FROM locations ORDER BY name', (locErr, locations) => {
         if (locErr) return dbError(res, locErr);
 
-        res.render('reports', {
-          user: req.session.user,
-          reports: results,
-          categories,
-          locations,
-          filters: {
-            searchText: req.body.searchText || '',
-            report_type: reportType,
-            category_id: categoryId,
-            location_id: locationId,
-            status: status,
-            sort: sort
-          },
-          messages: req.flash('success'),
-          errors: req.flash('error')
+        // report_ids the logged-in user has already claimed (0 = guest -> none)
+        const uid = req.session.user ? req.session.user.user_id : 0;
+        db.query('SELECT report_id FROM claims WHERE user_id = ?', [uid], (clErr, claimRows) => {
+          if (clErr) return dbError(res, clErr);
+          const claimedReportIds = claimRows.map(c => c.report_id);
+
+          res.render('reports', {
+            user: req.session.user,
+            reports: results,
+            categories,
+            locations,
+            claimedReportIds,
+            filters: {
+              searchText: req.body.searchText || '',
+              report_type: reportType,
+              category_id: categoryId,
+              location_id: locationId,
+              status: status,
+              sort: sort
+            },
+            messages: req.flash('success'),
+            errors: req.flash('error')
+          });
         });
       });
     });
@@ -851,11 +876,18 @@ app.get('/reports/:id', (req, res) => {
       return res.redirect('/');
     }
 
-    res.render('reportDetails', {
-      user: req.session.user,
-      report: results[0],
-      messages: req.flash('success'),
-      errors: req.flash('error')
+    // Has the logged-in user already claimed this report? (0 = guest -> no)
+    const uid = req.session.user ? req.session.user.user_id : 0;
+    db.query('SELECT claim_id FROM claims WHERE report_id = ? AND user_id = ?', [reportId, uid], (clErr, claimRows) => {
+      if (clErr) return dbError(res, clErr);
+
+      res.render('reportDetails', {
+        user: req.session.user,
+        report: results[0],
+        alreadyClaimed: claimRows.length > 0,
+        messages: req.flash('success'),
+        errors: req.flash('error')
+      });
     });
   });
 });
