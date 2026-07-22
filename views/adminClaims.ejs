@@ -43,7 +43,7 @@
                   <%= claim.item_name %>
                 </td>
                 <td><%= claim.username %><br><small class="text-muted"><%= claim.email %></small></td>
-                <td><%= claim.claim_message %></td>
+                <td style="max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="<%= claim.claim_message %>"><%= claim.claim_message %></td>
                 <td>
                   <% if (claim.image) { %>
                     <a href="/images/<%= claim.image %>" target="_blank">
@@ -58,14 +58,15 @@
                     <%= claim.status %>
                   </span>
                 </td>
-                <td><%= new Date(claim.created_at).toLocaleString() %></td>
-                <td>
+                <td><%= new Date(claim.created_at).toLocaleString('en-SG', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' }) %></td>
+                <td style="max-width: 180px;">
                   <% if (claim.status === 'Pending') { %>
-                    <form action="/admin/claims/<%= claim.claim_id %>/approve" method="POST" class="d-inline">
+                    <form action="/admin/claims/<%= claim.claim_id %>/approve" method="POST" class="mb-2">
                       <button type="submit" class="btn btn-success btn-sm">Approve</button>
                     </form>
-                    <form action="/admin/claims/<%= claim.claim_id %>/reject" method="POST" style="min-width: 160px;">
-                      <input type="text" name="reject_reason" class="form-control form-control-sm mt-1" placeholder="Reason (optional)">
+                    <form action="/admin/claims/<%= claim.claim_id %>/reject" method="POST">
+                      <label for="reject_reason_<%= claim.claim_id %>" class="form-label small text-muted mb-1">Rejection reason (optional)</label>
+                      <input type="text" id="reject_reason_<%= claim.claim_id %>" name="reject_reason" class="form-control form-control-sm text-truncate" placeholder="e.g. Insufficient proof" style="max-width: 100%; overflow: hidden; text-overflow: ellipsis;">
                       <button type="submit" class="btn btn-danger btn-sm mt-1">Reject</button>
                     </form>
                   <% } else if (claim.status === 'Rejected') { %>

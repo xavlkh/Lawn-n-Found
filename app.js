@@ -377,7 +377,6 @@ const searchSql = `
     ON r.location_id = l.location_id
   LEFT JOIN users u
     ON r.user_id = u.user_id
-    WHERE r.status = 'Open'
   ORDER BY r.created_at DESC
 `;
 
@@ -512,6 +511,11 @@ app.post('/search', checkAuthenticated, (req, res) => {
 
 // ---------- STUDENT: show the "submit a claim" form for a found item ----------
 app.get('/user/claims/submit/:reportId', checkAuthenticated, (req, res) => {
+  // Admins manage claims - they don't submit them.
+  if (req.session.user.role === 'admin') {
+    req.flash('error', 'Admins cannot submit claims.');
+    return res.redirect('/');
+  }
   const sql = 'SELECT * FROM reports WHERE report_id = ?';
   db.query(sql, [req.params.reportId], (err, results) => {
     if (err) return dbError(res, err);
@@ -530,6 +534,11 @@ app.get('/user/claims/submit/:reportId', checkAuthenticated, (req, res) => {
 
 // ---------- STUDENT: handle the claim submission ----------
 app.post('/user/claims/submit/:reportId', checkAuthenticated, upload.single('image'), (req, res) => {
+  // Admins manage claims - they don't submit them.
+  if (req.session.user.role === 'admin') {
+    req.flash('error', 'Admins cannot submit claims.');
+    return res.redirect('/');
+  }
   const reportId = req.params.reportId;
   const userId = req.session.user.user_id;
   const { claim_message } = req.body;
@@ -725,10 +734,7 @@ app.post('/reports/new', checkAuthenticated, upload.single('image'), (req, res) 
   });
 });
 
-// #####################################################################
-// #####       PART D - SEARCH, FILTERING AND CATEGORIES          #####
-// #####                        (May)                             #####
-// #####################################################################
+// PART D - SEARCH, FILTER & CATEGORIES (May) - runs on the /reports page
 const reportsSql = `
   SELECT
     r.*,
@@ -742,12 +748,29 @@ const reportsSql = `
     ON r.location_id = l.location_id
   LEFT JOIN users u
     ON r.user_id = u.user_id
-    WHERE r.status = 'Open'
   ORDER BY r.created_at DESC
 `;
 
 app.get('/', (req, res) => {
-  db.query(reportsSql, (err, reports) => {
+  // PART D - Default to showing only Open reports (May)
+  const defaultSql = `
+    SELECT
+      r.*,
+      c.name AS category_name,
+      l.name AS location_name,
+      u.username AS reporter_name
+    FROM reports r
+    LEFT JOIN categories c
+      ON r.category_id = c.category_id
+    LEFT JOIN locations l
+      ON r.location_id = l.location_id
+    LEFT JOIN users u
+      ON r.user_id = u.user_id
+    WHERE r.status = 'Open'
+    ORDER BY r.created_at DESC
+  `;
+
+  db.query(defaultSql, (err, reports) => {
     if (err) return dbError(res, err);
 
     db.query('SELECT category_id, name FROM categories ORDER BY name', (catErr, categories) => {
@@ -768,7 +791,7 @@ app.get('/', (req, res) => {
             categories,
             locations,
             claimedReportIds,
-            filters: { searchText: '', report_type: '', category_id: '', location_id: '', status: '', sort: 'newest' },
+            filters: { searchText: '', report_type: '', category_id: '', location_id: '', status: 'Open', sort: 'newest' },
             messages: req.flash('success'),
             errors: req.flash('error')
           });
@@ -783,29 +806,55 @@ app.post('/', (req, res) => {
   const reportType = req.body.report_type || '';
   const categoryId = req.body.category_id || '';
   const locationId = req.body.location_id || '';
-  const status     = req.body.status || '';
+  const status     = req.body.status;
   const sort       = req.body.sort || 'newest';
 
-  db.query(reportsSql, (err, reports) => {
+  // PART D - SQL with optional status filter (May): "All" shows everything, otherwise filter by selected status
+  let filteredSql = `
+    SELECT
+      r.*,
+      c.name AS category_name,
+      l.name AS location_name,
+      u.username AS reporter_name
+    FROM reports r
+    LEFT JOIN categories c
+      ON r.category_id = c.category_id
+    LEFT JOIN locations l
+      ON r.location_id = l.location_id
+    LEFT JOIN users u
+      ON r.user_id = u.user_id
+  `;
+
+  const params = [];
+  if (status !== '') {
+    filteredSql += ' WHERE r.status = ?';
+    params.push(status);
+  }
+
+  filteredSql += ' ORDER BY r.created_at DESC';
+
+  db.query(filteredSql, params, (err, reports) => {
     if (err) return dbError(res, err);
 
+    // PART D - SEARCH (May): keyword match on item name OR description
     let results = reports.filter(report => {
       return report.item_name.toLowerCase().includes(searchText) ||
              (report.description || '').toLowerCase().includes(searchText);
     });
 
+    // PART D - FILTER: Type (May)
     if (reportType !== '') {
       results = results.filter(report => report.report_type === reportType);
     }
+    // PART D - CATEGORIES (May): filter by chosen category
     if (categoryId !== '') {
       results = results.filter(report => String(report.category_id) === categoryId);
     }
+    // PART D - FILTER: Location (May)
     if (locationId !== '') {
       results = results.filter(report => String(report.location_id) === locationId);
     }
-    if (status !== '') {
-      results = results.filter(report => report.status === status);
-    }
+    // PART D - SORT (May): oldest first reverses the list
     if (sort === 'oldest') {
       results = results.reverse();
     }
@@ -844,6 +893,8 @@ app.post('/', (req, res) => {
     });
   });
 });
+
+// END OF PART D (May)
 
 app.get('/user/reports', checkAuthenticated, (req, res) => {
   const sql = `

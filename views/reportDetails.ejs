@@ -28,17 +28,18 @@
           <% } %>
 
           <div class="<%= report.image ? 'col-md-7' : 'col-12' %>">
-            <div class="d-flex justify-content-between align-items-start gap-3 mb-3">
-              <div>
-                <h2 class="card-title text-break mb-2"><%= report.item_name %></h2>
-                <span class="badge bg-<%= report.report_type === 'Lost' ? 'danger' : 'success' %> fs-6">
-                  <%= report.report_type %>
-                </span>
-              </div>
+            <h2 class="card-title text-break mb-2"><%= report.item_name %></h2>
 
-              <span class="badge bg-<%= report.status === 'Resolved' ? 'secondary' : (report.status === 'Claimed' ? 'warning text-dark' : 'primary') %> fs-6">
+            <div class="d-flex align-items-center gap-2 mb-3">
+              <span class="badge rounded-pill bg-<%= report.report_type === 'Lost' ? 'danger' : 'success' %> fs-6">
+                <%= report.report_type %>
+              </span>
+              <span class="badge rounded-pill bg-<%= report.status === 'Resolved' ? 'secondary' : (report.status === 'Claimed' ? 'warning text-dark' : 'primary') %> fs-6">
                 <%= report.status %>
               </span>
+              <% if (user && user.user_id === report.user_id) { %>
+                <span class="badge rounded-pill bg-info text-dark fs-6">Your Report</span>
+              <% } %>
             </div>
 
             <hr>
@@ -54,19 +55,20 @@
               <dd class="col-sm-7"><%= report.location_name || 'Not specified' %></dd>
 
               <dt class="col-sm-5">Date Lost or Found</dt>
-              <dd class="col-sm-7"><%= new Date(report.date_lost_found).toLocaleDateString('en-SG') %></dd>
+              <dd class="col-sm-7"><%= new Date(report.date_lost_found).toLocaleDateString('en-SG', { day: '2-digit', month: '2-digit', year: '2-digit' }) %></dd>
 
               <dt class="col-sm-5">Reported By</dt>
               <dd class="col-sm-7"><%= report.reporter_name || 'Unknown user' %></dd>
 
               <dt class="col-sm-5">Created</dt>
-              <dd class="col-sm-7"><%= new Date(report.created_at).toLocaleString('en-SG') %></dd>
+              <dd class="col-sm-7"><%= new Date(report.created_at).toLocaleString('en-SG', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' }) %></dd>
             </dl>
 
             <% if (user && report.status === 'Open') { %>
               <div class="d-flex flex-wrap gap-2 mt-3">
                 <% if (
                   report.report_type === 'Found' &&
+                  user.role !== 'admin' &&
                   user.user_id !== report.user_id
                 ) { %>
                   <% if (alreadyClaimed) { %>

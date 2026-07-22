@@ -59,7 +59,7 @@
                     <div class="small text-muted mt-1">Reason: <%= claim.reject_reason %></div>
                   <% } %>
                 </td>
-                <td><%= new Date(claim.created_at).toLocaleString() %></td>
+                <td><%= new Date(claim.created_at).toLocaleString('en-SG', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' }) %></td>
               </tr>
             <% }) %>
           </tbody>
