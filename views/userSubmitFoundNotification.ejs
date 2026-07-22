@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <%- include('partials/head') %>
+  <title>I Found This Item</title>
+</head>
+<body>
+  <%- include('partials/navbar') %>
+
+  <div class="container mt-4" style="max-width: 640px;">
+    <%- include('partials/messages') %>
+
+    <h2 class="mb-3">I Found This Item</h2>
+    <p class="text-muted"><span class="text-danger">*</span> Required fields</p>
+
+    <div class="card mb-3">
+      <% if (report.image) { %>
+        <img
+          src="/images/<%= report.image %>"
+          class="card-img-top"
+          alt="<%= report.item_name %>"
+          style="max-height: 300px; object-fit: contain;"
+        >
+      <% } %>
+
+      <div class="card-body">
+        <h5><%= report.item_name %></h5>
+        <p><%= report.description %></p>
+      </div>
+    </div>
+
+    <form
+      action="/user/lost-item-alerts/submit/<%= report.report_id %>"
+      method="POST"
+      enctype="multipart/form-data"
+    >
+      <div class="mb-3">
+        <label for="message" class="form-label">
+          Where did you find it, and how can the owner collect it? <span class="text-danger">*</span>
+        </label>
+
+        <textarea
+          id="message"
+          name="message"
+          class="form-control"
+          rows="4"
+          required
+        ></textarea>
+      </div>
+
+      <div class="mb-3">
+        <label for="image" class="form-label">
+          Photo of the item (optional)
+        </label>
+
+        <input
+          type="file"
+          id="image"
+          name="image"
+          class="form-control"
+          accept="image/jpeg,image/png,image/gif,image/webp"
+        >
+        <div class="form-text">Accepted formats: JPEG, PNG, GIF, WebP. Max 5 MB.</div>
+      </div>
+
+      <button type="submit" class="btn btn-success">
+        Inform Owner
+      </button>
+
+      <a
+        href="/reports/<%= report.report_id %>"
+        class="btn btn-outline-secondary"
+      >
+        Cancel
+      </a>
+    </form>
+    <div class="mb-4"></div>
+  </div>
+</body>
+</html>

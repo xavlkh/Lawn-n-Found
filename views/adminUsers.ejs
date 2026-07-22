@@ -41,7 +41,7 @@
                     <%= u.role %>
                   </span>
                 </td>
-                <td><%= new Date(u.created_at).toLocaleString() %></td>
+                <td><%= new Date(u.created_at).toLocaleString('en-SG', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' }) %></td>
                 <td>
                   <% if (u.user_id === user.user_id) { %>
                     <span class="text-muted">Current user</span>
@@ -64,6 +64,7 @@
       </div>
       <p class="text-muted">Total users: <%= users.length %></p>
     <% } %>
+    <div class="mb-4"></div>
   </div>
 </body>
 </html>

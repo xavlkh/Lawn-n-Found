@@ -7,76 +7,111 @@
 <body>
   <%- include('partials/navbar') %>
 
-  <div class="container mt-4" style="max-width: 800px;">
+  <div class="container mt-4" style="max-width: 960px;">
     <%- include('partials/messages') %>
 
-    <a href="/reports" class="text-muted text-decoration-underline mb-3">
+    <a href="/" class="btn btn-outline-secondary btn-sm mb-3">
       Back to Reports
     </a>
 
-    <br><br>
-
     <div class="card">
-      <div class="card-body">
-        <% if (report.image) { %>
-          <div class="mb-3">
-            <img src="/images/<%= report.image %>" alt="<%= report.item_name %>" class="img-fluid rounded" style="max-height: 400px; object-fit: cover;">
+      <div class="card-body p-4">
+        <div class="row g-4">
+          <% if (report.image) { %>
+            <div class="col-md-5">
+              <img
+                src="/images/<%= report.image %>"
+                alt="<%= report.item_name %>"
+                class="img-fluid rounded w-100 report-detail-image"
+              >
+            </div>
+          <% } %>
+
+          <div class="<%= report.image ? 'col-md-7' : 'col-12' %>">
+            <h2 class="card-title text-break mb-2"><%= report.item_name %></h2>
+
+            <div class="d-flex align-items-center gap-2 mb-3">
+              <span class="badge rounded-pill bg-<%= report.report_type === 'Lost' ? 'danger' : 'success' %> fs-6">
+                <%= report.report_type %>
+              </span>
+              <span class="badge rounded-pill bg-<%= report.status === 'Resolved' ? 'secondary' : (report.status === 'Claimed' ? 'warning text-dark' : 'primary') %> fs-6">
+                <%= report.status %>
+              </span>
+              <% if (user && user.user_id === report.user_id) { %>
+                <span class="badge rounded-pill bg-info text-dark fs-6">Your Report</span>
+              <% } %>
+            </div>
+
+            <hr>
+
+            <dl class="row mb-0">
+              <dt class="col-sm-5">Description</dt>
+              <dd class="col-sm-7"><%= report.description %></dd>
+
+              <dt class="col-sm-5">Category</dt>
+              <dd class="col-sm-7"><%= report.category_name || 'Not specified' %></dd>
+
+              <dt class="col-sm-5">Location</dt>
+              <dd class="col-sm-7"><%= report.location_name || 'Not specified' %></dd>
+
+              <dt class="col-sm-5">Date Lost or Found</dt>
+              <dd class="col-sm-7"><%= new Date(report.date_lost_found).toLocaleDateString('en-SG', { day: '2-digit', month: '2-digit', year: '2-digit' }) %></dd>
+
+              <dt class="col-sm-5">Reported By</dt>
+              <dd class="col-sm-7"><%= report.reporter_name || 'Unknown user' %></dd>
+
+              <dt class="col-sm-5">Created</dt>
+              <dd class="col-sm-7"><%= new Date(report.created_at).toLocaleString('en-SG', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' }) %></dd>
+            </dl>
+
+            <% if (user && report.status === 'Open') { %>
+              <div class="d-flex flex-wrap gap-2 mt-3">
+                <% if (
+                  report.report_type === 'Found' &&
+                  user.user_id !== report.user_id
+                ) { %>
+                  <a
+                    href="/user/claims/submit/<%= report.report_id %>"
+                    class="btn btn-primary"
+                  >
+                    Claim This Item
+                  </a>
+                <% } %>
+
+                <% if (
+                  report.report_type === 'Lost' &&
+                  user.user_id !== report.user_id
+                ) { %>
+                  <a
+                    href="/user/lost-item-alerts/submit/<%= report.report_id %>"
+                    class="btn btn-success"
+                  >
+                    I Found This Item
+                  </a>
+                <% } %>
+
+                <% if (
+                  report.report_type === 'Lost' &&
+                  user.user_id === report.user_id
+                ) { %>
+                  <form
+                    action="/reports/<%= report.report_id %>/mark-recovered"
+                    method="POST"
+                    class="d-inline"
+                  >
+                    <button
+                      type="submit"
+                      class="btn btn-success"
+                      onclick="return confirm('Confirm that you recovered this item?');"
+                    >
+                      Mark as Recovered
+                    </button>
+                  </form>
+                <% } %>
+              </div>
+            <% } %>
           </div>
-        <% } %>
-
-        <div class="mb-3">
-          <h2 class="card-title mb-2 text-break"><%= report.item_name %></h2>
-          <span class="badge bg-<%= report.report_type === 'Lost' ? 'danger' : 'success' %> fs-6 me-2">
-            <%= report.report_type %>
-          </span>
-          <span class="badge bg-<%= report.status === 'Resolved' ? 'secondary' : (report.status === 'Claimed' ? 'warning text-dark' : 'primary') %> fs-6">
-            <%= report.status %>
-          </span>
         </div>
-
-        <dl class="row">
-          <dt class="col-sm-4">Description</dt>
-          <dd class="col-sm-8"><%= report.description %></dd>
-
-          <dt class="col-sm-4">Category</dt>
-          <dd class="col-sm-8">
-            <%= report.category_name || 'Not specified' %>
-          </dd>
-
-          <dt class="col-sm-4">Location</dt>
-          <dd class="col-sm-8">
-            <%= report.location_name || 'Not specified' %>
-          </dd>
-
-          <dt class="col-sm-4">Date Lost or Found</dt>
-          <dd class="col-sm-8">
-            <%= new Date(report.date_lost_found).toLocaleDateString('en-SG') %>
-          </dd>
-
-          <dt class="col-sm-4">Reported By</dt>
-          <dd class="col-sm-8">
-            <%= report.reporter_name || 'Unknown user' %>
-          </dd>
-
-          <dt class="col-sm-4">Created</dt>
-          <dd class="col-sm-8">
-            <%= new Date(report.created_at).toLocaleString('en-SG') %>
-          </dd>
-        </dl>
-
-        <% if (
-          user &&
-          report.report_type === 'Found' &&
-          report.status !== 'Resolved' &&
-          user.user_id !== report.user_id
-        ) { %>
-          <a
-            href="/user/claims/submit/<%= report.report_id %>"
-            class="btn btn-primary"
-          >
-            Submit Claim
-          </a>
-        <% } %>
       </div>
     </div>
     <div class="mb-4"></div>

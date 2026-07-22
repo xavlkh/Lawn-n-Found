@@ -26,14 +26,16 @@ const storage = multer.diskStorage({
 const upload = multer({ storage: storage });
 
 // ---------- Database connection (mysql2) ----------
-const db = mysql.createConnection({
+const db = mysql.createPool({
   host: 'c237-adib-mysql.mysql.database.azure.com',
   user: 'c237_026',
   password: 'c237026@2026!',
   database: 'c237_026_team2_ca2',
-  ssl: { rejectUnauthorized: false }
+  ssl: { rejectUnauthorized: false },
+  enableKeepAlive: true,
+  keepAliveInitialDelay: 0
 });
-db.connect((err) => {
+db.getConnection((err) => {
   if (err) {
     console.error('Database connection failed:', err);
     return;
@@ -192,20 +194,6 @@ app.get('/logout', (req, res) => {
   res.redirect('/');
 });
 
-// Scaffold home page: lists FOUND items so a user can submit a claim.
-// (The real Browse Reports page is Benny's Part B.)
-app.get('/', (req, res) => {
-  const sql = "SELECT * FROM reports WHERE report_type = 'Found' ORDER BY created_at DESC";
-  db.query(sql, (err, reports) => {
-    if (err) return dbError(res, err);
-    res.render('index', {
-      user: req.session.user,
-      reports: reports,
-      messages: req.flash('success'),
-      errors: req.flash('error')
-    });
-  });
-});
 
 // Part C - Update and Delete Reports - Done by Ahmad.\\
 // Update User report
@@ -384,6 +372,22 @@ app.post("/admin/claims/update/:id", checkAuthenticated, checkAdmin, upload.sing
         if (err) throw err;
 
         req.flash("success", "Claim updated successfully.");
+        res.redirect("/admin/claims");
+    });
+});
+
+//Admin Claim Delete
+app.post('/admin/claims/delete/:id', checkAuthenticated, checkAdmin, (req, res) => {
+    const claimId = req.params.id;
+
+    const sql = "DELETE FROM claims WHERE claim_id = ?";
+
+    db.query(sql, [claimId], (err) => {
+        if (err) {
+            return dbError(res, err);
+        }
+
+        req.flash("success", "Claim deleted successfully.");
         res.redirect("/admin/claims");
     });
 });
@@ -598,14 +602,16 @@ app.post('/user/claims/submit/:reportId', checkAuthenticated, upload.single('ima
       if (err2) return dbError(res, err2);
 
       // Mark the report as "Claimed" so others can see a claim is in progress.
-      db.query("UPDATE reports SET status = 'Claimed' WHERE report_id = ? AND status = 'Open'", [reportId], (err3) => {
-        if (err3) return dbError(res, err3);
+    db.query(insert, [reportId, userId, claim_message, image], (err2) => {
+        if (err2) return dbError(res, err2);
+
         req.flash('success', 'Claim submitted! An admin will review it.');
         res.redirect('/user/claims');
+        });
       });
     });
   });
-});
+
 
 // =====================================================================
 // PART B - CREATE AND VIEW REPORTS (Benny)
@@ -758,8 +764,26 @@ app.post('/reports/new', checkAuthenticated, upload.single('image'), (req, res) 
   });
 });
 
-app.get('/reports', (req, res) => {
-  const sql = `
+// PART D - SEARCH, FILTER & CATEGORIES (May) - runs on the /reports page
+const reportsSql = `
+  SELECT
+    r.*,
+    c.name AS category_name,
+    l.name AS location_name,
+    u.username AS reporter_name
+  FROM reports r
+  LEFT JOIN categories c
+    ON r.category_id = c.category_id
+  LEFT JOIN locations l
+    ON r.location_id = l.location_id
+  LEFT JOIN users u
+    ON r.user_id = u.user_id
+  ORDER BY r.created_at DESC
+`;
+
+app.get('/', (req, res) => {
+  // PART D - Default to showing only Open reports (May)
+  const defaultSql = `
     SELECT
       r.*,
       c.name AS category_name,
@@ -772,22 +796,119 @@ app.get('/reports', (req, res) => {
       ON r.location_id = l.location_id
     LEFT JOIN users u
       ON r.user_id = u.user_id
+    WHERE r.status = 'Open'
     ORDER BY r.created_at DESC
   `;
 
-  db.query(sql, (err, reports) => {
-    if (err) {
-      return dbError(res, err);
-    }
+  db.query(defaultSql, (err, reports) => {
+    if (err) return dbError(res, err);
 
-    res.render('reports', {
-      user: req.session.user,
-      reports,
-      messages: req.flash('success'),
-      errors: req.flash('error')
+    db.query('SELECT category_id, name FROM categories ORDER BY name', (catErr, categories) => {
+      if (catErr) return dbError(res, catErr);
+
+      db.query('SELECT location_id, name FROM locations ORDER BY name', (locErr, locations) => {
+        if (locErr) return dbError(res, locErr);
+
+        res.render('reports', {
+          user: req.session.user,
+          reports,
+          categories,
+          locations,
+          filters: { searchText: '', report_type: '', category_id: '', location_id: '', status: 'Open', sort: 'newest' },
+          messages: req.flash('success'),
+          errors: req.flash('error')
+        });
+      });
     });
   });
 });
+
+app.post('/', (req, res) => {
+  const searchText = (req.body.searchText || '').toLowerCase();
+  const reportType = req.body.report_type || '';
+  const categoryId = req.body.category_id || '';
+  const locationId = req.body.location_id || '';
+  const status     = req.body.status;
+  const sort       = req.body.sort || 'newest';
+
+  // PART D - SQL with optional status filter (May): "All" shows everything, otherwise filter by selected status
+  let filteredSql = `
+    SELECT
+      r.*,
+      c.name AS category_name,
+      l.name AS location_name,
+      u.username AS reporter_name
+    FROM reports r
+    LEFT JOIN categories c
+      ON r.category_id = c.category_id
+    LEFT JOIN locations l
+      ON r.location_id = l.location_id
+    LEFT JOIN users u
+      ON r.user_id = u.user_id
+  `;
+
+  const params = [];
+  if (status !== '') {
+    filteredSql += ' WHERE r.status = ?';
+    params.push(status);
+  }
+
+  filteredSql += ' ORDER BY r.created_at DESC';
+
+  db.query(filteredSql, params, (err, reports) => {
+    if (err) return dbError(res, err);
+
+    // PART D - SEARCH (May): keyword match on item name OR description
+    let results = reports.filter(report => {
+      return report.item_name.toLowerCase().includes(searchText) ||
+             (report.description || '').toLowerCase().includes(searchText);
+    });
+
+    // PART D - FILTER: Type (May)
+    if (reportType !== '') {
+      results = results.filter(report => report.report_type === reportType);
+    }
+    // PART D - CATEGORIES (May): filter by chosen category
+    if (categoryId !== '') {
+      results = results.filter(report => String(report.category_id) === categoryId);
+    }
+    // PART D - FILTER: Location (May)
+    if (locationId !== '') {
+      results = results.filter(report => String(report.location_id) === locationId);
+    }
+    // PART D - SORT (May): oldest first reverses the list
+    if (sort === 'oldest') {
+      results = results.reverse();
+    }
+
+    db.query('SELECT category_id, name FROM categories ORDER BY name', (catErr, categories) => {
+      if (catErr) return dbError(res, catErr);
+
+      db.query('SELECT location_id, name FROM locations ORDER BY name', (locErr, locations) => {
+        if (locErr) return dbError(res, locErr);
+
+        res.render('reports', {
+          user: req.session.user,
+          reports: results,
+          categories,
+          locations,
+          filters: {
+            searchText: req.body.searchText || '',
+            report_type: reportType,
+            category_id: categoryId,
+            location_id: locationId,
+            status: status,
+            sort: sort
+          },
+          messages: req.flash('success'),
+          errors: req.flash('error')
+        });
+      });
+    });
+  });
+});
+
+// END OF PART D (May)
 
 app.get('/user/reports', checkAuthenticated, (req, res) => {
   const sql = `
@@ -856,9 +977,373 @@ app.get('/reports/:id', (req, res) => {
   });
 });
 
+// -------Add lost-item notification routes (show "I Found This Item" form)
+app.get(
+  '/user/lost-item-alerts/submit/:reportId',
+  checkAuthenticated,
+  (req, res) => {
+    const sql = `
+      SELECT *
+      FROM reports
+      WHERE report_id = ?
+    `;
+
+    db.query(sql, [req.params.reportId], (err, results) => {
+      if (err) return dbError(res, err);
+
+      if (results.length === 0) {
+        req.flash('error', 'Report not found.');
+        return res.redirect('/');
+      }
+
+      const report = results[0];
+
+      if (report.report_type !== 'Lost') {
+        req.flash(
+          'error',
+          'The “I Found This Item” feature is only for lost reports.'
+        );
+        return res.redirect('/reports/' + report.report_id);
+      }
+
+      if (report.status !== 'Open') {
+        req.flash('error', 'This lost-item report is already resolved.');
+        return res.redirect('/');
+      }
+
+      if (report.user_id === req.session.user.user_id) {
+        req.flash('error', 'You cannot send a found alert to yourself.');
+        return res.redirect('/reports/' + report.report_id);
+      }
+
+      res.render('userSubmitFoundNotification', {
+        report,
+        messages: req.flash('success'),
+        errors: req.flash('error')
+      });
+    });
+  }
+);
+
+//------ Save the notification------------
+
+app.post(
+  '/user/lost-item-alerts/submit/:reportId',
+  checkAuthenticated,
+  upload.single('image'),
+  (req, res) => {
+    const reportId = req.params.reportId;
+    const finderId = req.session.user.user_id;
+    const message = (req.body.message || '').trim();
+    const image = req.file ? req.file.filename : null;
+
+    if (message.length < 10) {
+      req.flash(
+        'error',
+        'Please provide at least 10 characters of information.'
+      );
+      return res.redirect(
+        '/user/lost-item-alerts/submit/' + reportId
+      );
+    }
+
+    const reportSql = `
+      SELECT report_id, user_id, report_type, status
+      FROM reports
+      WHERE report_id = ?
+    `;
+
+    db.query(reportSql, [reportId], (reportError, reports) => {
+      if (reportError) return dbError(res, reportError);
+
+      if (reports.length === 0) {
+        req.flash('error', 'Report not found.');
+        return res.redirect('/');
+      }
+
+      const report = reports[0];
+
+      if (report.report_type !== 'Lost' || report.status !== 'Open') {
+        req.flash('error', 'This lost report is no longer active.');
+        return res.redirect('/');
+      }
+
+      if (report.user_id === finderId) {
+        req.flash('error', 'You cannot send a found alert to yourself.');
+        return res.redirect('/reports/' + reportId);
+      }
+
+      const duplicateSql = `
+        SELECT notification_id
+        FROM found_notifications
+        WHERE report_id = ?
+          AND finder_id = ?
+          AND status = 'Pending'
+      `;
+
+      db.query(
+        duplicateSql,
+        [reportId, finderId],
+        (duplicateError, existingNotifications) => {
+          if (duplicateError) return dbError(res, duplicateError);
+
+          if (existingNotifications.length > 0) {
+            req.flash(
+              'error',
+              'You already sent a notification for this lost item.'
+            );
+            return res.redirect('/reports/' + reportId);
+          }
+
+          const insertSql = `
+            INSERT INTO found_notifications
+              (report_id, finder_id, message, image, status)
+            VALUES (?, ?, ?, ?, 'Pending')
+          `;
+
+          db.query(
+            insertSql,
+            [reportId, finderId, message, image],
+            (insertError) => {
+              if (insertError) return dbError(res, insertError);
+
+              req.flash(
+                'success',
+                'The owner has been informed that you may have found the item.'
+              );
+
+              res.redirect('/reports/' + reportId);
+            }
+          );
+        }
+      );
+    });
+  }
+);
+
+//----Display notification received by owner---------
+app.get(
+  '/user/lost-item-alerts',
+  checkAuthenticated,
+  (req, res) => {
+    const sql = `
+      SELECT
+        n.*,
+        r.item_name,
+        r.status AS report_status,
+        u.username AS finder_name
+      FROM found_notifications n
+      JOIN reports r
+        ON n.report_id = r.report_id
+      JOIN users u
+        ON n.finder_id = u.user_id
+      WHERE r.user_id = ?
+      ORDER BY
+        (n.status = 'Pending') DESC,
+        n.created_at DESC
+    `;
+
+    db.query(sql, [req.session.user.user_id], (err, notifications) => {
+      if (err) return dbError(res, err);
+
+      res.render('userLostItemAlerts', {
+        notifications,
+        messages: req.flash('success'),
+        errors: req.flash('error')
+      });
+    });
+  }
+);
+
+//------Owner confirms the item was recovered ----
+
+app.post(
+  '/user/lost-item-alerts/:notificationId/confirm',
+  checkAuthenticated,
+  (req, res) => {
+    const notificationId = req.params.notificationId;
+
+    const selectSql = `
+      SELECT
+        n.notification_id,
+        n.report_id,
+        n.status AS notification_status,
+        r.user_id AS owner_id,
+        r.report_type,
+        r.status AS report_status
+      FROM found_notifications n
+      JOIN reports r
+        ON n.report_id = r.report_id
+      WHERE n.notification_id = ?
+    `;
+
+    db.query(selectSql, [notificationId], (selectError, rows) => {
+      if (selectError) return dbError(res, selectError);
+
+      if (rows.length === 0) {
+        req.flash('error', 'Notification not found.');
+        return res.redirect('/user/lost-item-alerts');
+      }
+
+      const notification = rows[0];
+
+      if (notification.owner_id !== req.session.user.user_id) {
+        req.flash('error', 'You are not the owner of this report.');
+        return res.redirect('/user/lost-item-alerts');
+      }
+
+      if (
+        notification.report_type !== 'Lost' ||
+        notification.report_status !== 'Open' ||
+        notification.notification_status !== 'Pending'
+      ) {
+        req.flash('error', 'This notification can no longer be confirmed.');
+        return res.redirect('/user/lost-item-alerts');
+      }
+
+      db.query(
+        `
+          UPDATE found_notifications
+          SET status = 'Confirmed'
+          WHERE notification_id = ?
+        `,
+        [notificationId],
+        (confirmError) => {
+          if (confirmError) return dbError(res, confirmError);
+
+          db.query(
+            `
+              UPDATE found_notifications
+              SET status = 'Dismissed'
+              WHERE report_id = ?
+                AND notification_id != ?
+                AND status = 'Pending'
+            `,
+            [notification.report_id, notificationId],
+            (dismissError) => {
+              if (dismissError) return dbError(res, dismissError);
+
+              db.query(
+                `
+                  UPDATE reports
+                  SET status = 'Resolved'
+                  WHERE report_id = ?
+                `,
+                [notification.report_id],
+                (reportError) => {
+                  if (reportError) return dbError(res, reportError);
+
+                  req.flash(
+                    'success',
+                    'Item recovery confirmed. The report is now resolved.'
+                  );
+
+                  res.redirect('/user/lost-item-alerts');
+                }
+              );
+            }
+          );
+        }
+      );
+    });
+  }
+);
+
+
+// --------Owner dismisses an incorrect notification-------
+app.post(
+  '/user/lost-item-alerts/:notificationId/dismiss',
+  checkAuthenticated,
+  (req, res) => {
+    const notificationId = req.params.notificationId;
+
+    const selectSql = `
+      SELECT
+        n.notification_id,
+        n.status,
+        r.user_id AS owner_id
+      FROM found_notifications n
+      JOIN reports r
+        ON n.report_id = r.report_id
+      WHERE n.notification_id = ?
+    `;
+
+    db.query(selectSql, [notificationId], (selectError, rows) => {
+      if (selectError) return dbError(res, selectError);
+
+      if (
+        rows.length === 0 ||
+        rows[0].owner_id !== req.session.user.user_id
+      ) {
+        req.flash('error', 'Notification not found or access denied.');
+        return res.redirect('/user/lost-item-alerts');
+      }
+
+      if (rows[0].status !== 'Pending') {
+        req.flash('error', 'This notification has already been handled.');
+        return res.redirect('/user/lost-item-alerts');
+      }
+
+      db.query(
+        `
+          UPDATE found_notifications
+          SET status = 'Dismissed'
+          WHERE notification_id = ?
+        `,
+        [notificationId],
+        (updateError) => {
+          if (updateError) return dbError(res, updateError);
+
+          req.flash('success', 'The notification was dismissed.');
+          res.redirect('/user/lost-item-alerts');
+        }
+      );
+    });
+  }
+);
+
+//------"Mark as Recovered (owner may recover an item by himself)"
+app.post(
+  '/reports/:id/mark-recovered',
+  checkAuthenticated,
+  (req, res) => {
+    const reportId = req.params.id;
+    const userId = req.session.user.user_id;
+
+    const sql = `
+      UPDATE reports
+      SET status = 'Resolved'
+      WHERE report_id = ?
+        AND user_id = ?
+        AND report_type = 'Lost'
+        AND status = 'Open'
+    `;
+
+    db.query(sql, [reportId, userId], (err, result) => {
+      if (err) return dbError(res, err);
+
+      if (result.affectedRows === 0) {
+        req.flash(
+          'error',
+          'The report was not found, is already resolved, or does not belong to you.'
+        );
+        return res.redirect('/user/reports');
+      }
+
+      req.flash(
+        'success',
+        'The item was marked as recovered and the report is now resolved.'
+      );
+
+      res.redirect('/user/reports');
+    });
+  }
+);
+
+
 // ---------- STUDENT: view my own claims and their status ----------
 app.get('/user/claims', checkAuthenticated, (req, res) => {
-  const sql = `SELECT c.*, r.item_name, r.report_type
+  const sql = `SELECT c.*, r.item_name, r.report_type, r.image AS report_image
                FROM claims c
                JOIN reports r ON c.report_id = r.report_id
                WHERE c.user_id = ?
@@ -876,7 +1361,7 @@ app.get('/user/claims', checkAuthenticated, (req, res) => {
 
 // ---------- ADMIN: view and manage all claims ----------
 app.get('/admin/claims', checkAuthenticated, checkAdmin, (req, res) => {
-  const sql = `SELECT c.*, r.item_name, u.username, u.email
+  const sql = `SELECT c.*, r.item_name, r.image AS report_image, u.username, u.email
                FROM claims c
                JOIN reports r ON c.report_id = r.report_id
                JOIN users u   ON c.user_id = u.user_id
@@ -909,8 +1394,9 @@ app.post('/admin/claims/:claimId/approve', checkAuthenticated, checkAdmin, (req,
     db.query("UPDATE claims SET status = 'Approved' WHERE claim_id = ?", [claimId], (err2) => {
       if (err2) return dbError(res, err2);
 
-      // 3. Auto-reject every OTHER pending claim for the same report.
-      db.query("UPDATE claims SET status = 'Rejected' WHERE report_id = ? AND claim_id != ? AND status = 'Pending'",
+      // 3. Auto-reject every OTHER pending claim for the same report,
+      //    giving them a reason so those students know why.
+      db.query("UPDATE claims SET status = 'Rejected', reject_reason = 'Another claim was approved for this item.' WHERE report_id = ? AND claim_id != ? AND status = 'Pending'",
         [reportId, claimId], (err3) => {
           if (err3) return dbError(res, err3);
 
@@ -925,13 +1411,17 @@ app.post('/admin/claims/:claimId/approve', checkAuthenticated, checkAdmin, (req,
   });
 });
 
-// ---------- ADMIN: reject a single claim ----------
+// ---------- ADMIN: reject a single claim (with a reason) ----------
 app.post('/admin/claims/:claimId/reject', checkAuthenticated, checkAdmin, (req, res) => {
-  db.query("UPDATE claims SET status = 'Rejected' WHERE claim_id = ?", [req.params.claimId], (err) => {
-    if (err) return dbError(res, err);
-    req.flash('success', 'Claim rejected.');
-    res.redirect('/admin/claims');
-  });
+  // The admin can type a reason in the reject form; store it so the student
+  // can see why their claim was rejected. Empty reason is stored as null.
+  const reason = req.body.reject_reason ? req.body.reject_reason : null;
+  db.query("UPDATE claims SET status = 'Rejected', reject_reason = ? WHERE claim_id = ?",
+    [reason, req.params.claimId], (err) => {
+      if (err) return dbError(res, err);
+      req.flash('success', 'Claim rejected.');
+      res.redirect('/admin/claims');
+    });
 });
 
 // ---------- ADMIN: view and manage all users ----------
@@ -976,7 +1466,7 @@ app.post('/admin/users/:userId/role', checkAuthenticated, checkAdmin, (req, res)
 // #####################################################################
 
 // ---------- Start the server ----------
-const PORT = process.env.PORT || 3001;
+const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`Server running at http://localhost:${PORT}`);
 });
