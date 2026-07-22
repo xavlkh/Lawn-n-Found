@@ -53,6 +53,20 @@
                 </td>
                 <td><%= new Date(claim.created_at).toLocaleString() %></td>
                 <td>
+                   <a href="/admin/claims/update/<%= claim.claim_id %>"
+                    class="btn btn-warning btn-sm">
+                      Update
+                  </a>
+                  <form action="/admin/claims/delete/<%= claim.claim_id %>"
+                      method="POST"
+                      style="display:inline;">
+                    <button
+                        type="submit"
+                        class="btn btn-danger btn-sm"
+                        onclick="return confirm('Are you sure you want to delete this report?');">
+                        Delete
+                    </button>
+                    </form>
                   <% if (claim.status === 'Pending') { %>
                     <form action="/admin/claims/<%= claim.claim_id %>/approve" method="POST" class="d-inline">
                       <button type="submit" class="btn btn-success btn-sm">Approve</button>
@@ -60,8 +74,6 @@
                     <form action="/admin/claims/<%= claim.claim_id %>/reject" method="POST" class="d-inline">
                       <button type="submit" class="btn btn-danger btn-sm">Reject</button>
                     </form>
-                  <% } else { %>
-                    <span class="text-muted">-</span>
                   <% } %>
                 </td>
               </tr>

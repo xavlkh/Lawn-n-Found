@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <%- include('partials/head') %>
+    <title>Update Claim</title>
+
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+
+<body>
+
+<%- include('partials/navbar') %>
+
+<div class="container mt-4" style="max-width:700px;">
+    <%- include('partials/messages') %>
+
+    <h2>Update Claim</h2>
+    <p class="text-muted"><span class="text-danger">*</span> Required fields</p>
+
+    <form action="/admin/claims/update/<%= claim.claim_id %>" method="POST" enctype="multipart/form-data">
+
+        <input type="hidden" name="claim_id" value="<%= claim.claim_id %>">
+
+        <!-- Item -->
+        <div class="mb-3">
+            <label class="form-label">Item</label>
+            <input
+                type="text"
+                class="form-control"
+                value="<%= claim.item_name %>"
+                readonly>
+        </div>
+
+        <!-- Claim Message -->
+        <div class="mb-3">
+            <label class="form-label">Claim Message <span class="text-danger">*</span></label>
+            <textarea
+                name="claim_message"
+                class="form-control"
+                rows="4"
+                required><%= claim.claim_message %></textarea>
+        </div>
+
+        <!-- Status -->
+        <div class="mb-3">
+            <label class="form-label">Status <span class="text-danger">*</span></label>
+            <select name="status" class="form-select" required>
+                <option value="Pending" <%= claim.status === "Pending" ? "selected" : "" %>>Pending</option>
+                <option value="Approved" <%= claim.status === "Approved" ? "selected" : "" %>>Approved</option>
+                <option value="Rejected" <%= claim.status === "Rejected" ? "selected" : "" %>>Rejected</option>
+            </select>
+        </div>
+
+        <!-- Current Proof Image -->
+        <% if (claim.image) { %>
+        <div class="mb-3">
+            <label class="form-label">Current Proof Image</label><br>
+            <img
+                src="/images/<%= claim.image %>"
+                class="img-thumbnail"
+                width="200">
+        </div>
+        <% } %>
+
+        <!-- Replace Proof Image -->
+        <div class="mb-3">
+            <label class="form-label">Replace Proof Image</label>
+            <input
+                type="file"
+                name="image"
+                class="form-control"
+                accept="image/jpeg,image/png,image/gif,image/webp">
+            <div class="form-text">
+                Leave empty if you don't want to change the image.
+            </div>
+        </div>
+
+        <button type="submit" class="btn btn-warning">
+            Update Claim
+        </button>
+
+        <a href="/admin/claims" class="btn btn-secondary">
+            Cancel
+        </a>
+
+    </form>
+</div>
+
+</body>
+</html>

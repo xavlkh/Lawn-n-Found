@@ -73,12 +73,12 @@
                 <td>
                   <a
                     href="/reports/<%= report.report_id %>"
-                    class="btn btn-outline-primary btn-sm"
+                    class="btn btn-primary btn-sm"
                   >
                     View
                   </a>
                   <a href="/update/<%= report.report_id %>" 
-                    class="btn btn-outline-warning btn-sm">
+                    class="btn btn-warning btn-sm">
                     Update
                   </a>
                   <form action="/reports/delete/<%= report.report_id %>"
@@ -86,7 +86,7 @@
                       style="display:inline;">
                     <button
                         type="submit"
-                        class="btn btn-outline-danger btn-sm"
+                        class="btn btn-danger btn-sm"
                         onclick="return confirm('Are you sure you want to delete this report?');">
                         Delete
                     </button>

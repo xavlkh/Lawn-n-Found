@@ -208,7 +208,7 @@ app.get('/', (req, res) => {
 });
 
 // Part C - Update and Delete Reports - Done by Ahmad.\\
-// Update
+// Update User report
 app.get('/update/:id', checkAuthenticated, (req, res) => {
     const reportId = req.params.id;
 
@@ -317,7 +317,7 @@ app.post('/update/:id', checkAuthenticated, upload.single('image'), (req, res) =
         res.redirect("/reports/" + reportId);
     });
 });
-// Delete
+// Delete Report
 app.post('/reports/delete/:id', checkAuthenticated, (req, res) => {
     const reportId = req.params.id;
 
@@ -330,6 +330,61 @@ app.post('/reports/delete/:id', checkAuthenticated, (req, res) => {
 
         req.flash("success", "Report deleted successfully.");
         res.redirect("/reports");
+    });
+});
+
+// Admin Claim Edit
+app.get("/admin/claims/update/:id", checkAuthenticated, checkAdmin, (req, res) => {
+    const sql = `
+        SELECT c.*, r.item_name
+        FROM claims c
+        JOIN reports r ON c.report_id = r.report_id
+        WHERE c.claim_id = ?
+    `;
+
+    db.query(sql, [req.params.id], (err, results) => {
+        if (err) return dbError(res, err);
+
+        if (results.length === 0) {
+            req.flash("error", "Claim not found.");
+            return res.redirect("/admin/claims");
+        }
+
+        res.render("updateClaim", {
+            user: req.session.user,
+            claim: results[0],
+            messages: req.flash("success"),
+            errors: req.flash("error")
+        });
+    });
+});
+
+app.post("/admin/claims/update/:id", checkAuthenticated, checkAdmin, upload.single("image"), (req, res) => {    const { claim_message, status } = req.body;
+
+    let sql;
+    let params;
+
+    if (req.file) {
+        sql = `
+            UPDATE claims
+            SET claim_message = ?, status = ?, image = ?
+            WHERE claim_id = ?
+        `;
+        params = [claim_message, status, req.file.filename, req.params.id];
+    } else {
+        sql = `
+            UPDATE claims
+            SET claim_message = ?, status = ?
+            WHERE claim_id = ?
+        `;
+        params = [claim_message, status, req.params.id];
+    }
+
+    db.query(sql, params, (err) => {
+        if (err) throw err;
+
+        req.flash("success", "Claim updated successfully.");
+        res.redirect("/admin/claims");
     });
 });
 // Part C Done.
