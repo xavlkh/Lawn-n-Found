@@ -34,7 +34,7 @@
               <span class="badge rounded-pill bg-<%= report.report_type === 'Lost' ? 'danger' : 'success' %> fs-6">
                 <%= report.report_type %>
               </span>
-              <span class="badge rounded-pill bg-<%= report.status === 'Resolved' ? 'secondary' : (report.status === 'Claimed' ? 'warning text-dark' : 'primary') %> fs-6">
+              <span class="badge rounded-pill bg-<%= report.status === 'Resolved' ? 'secondary' : 'primary' %> fs-6">
                 <%= report.status %>
               </span>
               <% if (user && user.user_id === report.user_id) { %>

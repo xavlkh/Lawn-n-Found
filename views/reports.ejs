@@ -90,7 +90,6 @@
               <select class="form-select" id="status" name="status">
                 <option value="">All</option>
                 <option value="Open"     <%= filters.status === 'Open'     ? 'selected' : '' %>>Open</option>
-                <option value="Claimed"  <%= filters.status === 'Claimed'  ? 'selected' : '' %>>Claimed</option>
                 <option value="Resolved" <%= filters.status === 'Resolved' ? 'selected' : '' %>>Resolved</option>
               </select>
             </div>
@@ -135,7 +134,7 @@
                   <span class="badge rounded-pill bg-<%= report.report_type === 'Lost' ? 'danger' : 'success' %> me-1">
                     <%= report.report_type %>
                   </span>
-                  <span class="badge rounded-pill bg-<%= report.status === 'Resolved' ? 'secondary' : (report.status === 'Claimed' ? 'warning text-dark' : 'primary') %>">
+                  <span class="badge rounded-pill bg-<%= report.status === 'Resolved' ? 'secondary' : 'primary' %>">
                     <%= report.status %>
                   </span>
                 </div>

@@ -70,11 +70,13 @@
                       <button type="submit" class="btn btn-danger btn-sm mt-1">Reject</button>
                     </form>
                   <% } else if (claim.status === 'Rejected') { %>
-                    <span class="text-danger small">
-                      <%= claim.reject_reason ? claim.reject_reason : 'No reason provided' %>
-                    </span>
-                  <% } else { %>
-                    <span class="text-muted">-</span>
+                    <% if (claim.reject_reason) { %>
+                      <span class="text-danger small"><%= claim.reject_reason %></span>
+                    <% } else { %>
+                      <span class="text-muted small fst-italic">No reason provided</span>
+                    <% } %>
+                  <% } else if (claim.status === 'Approved') { %>
+                    <span class="text-success small fst-italic">Report resolved</span>
                   <% } %>
                 </td>
               </tr>
