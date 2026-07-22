@@ -71,7 +71,7 @@ The portal was developed as a team project (CA2) for the module **C237-026 Softw
 ### 1. Clone the Repository
 
 ```bash
-git clone <your-repo-url>
+git clone https://github.com/xavlkh/Lawn-n-Found.git
 cd Lawn-n-Found
 ```
 
