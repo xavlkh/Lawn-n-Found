@@ -90,7 +90,6 @@
               <select class="form-select" id="status" name="status">
                 <option value="">All</option>
                 <option value="Open"     <%= filters.status === 'Open'     ? 'selected' : '' %>>Open</option>
-                <option value="Claimed"  <%= filters.status === 'Claimed'  ? 'selected' : '' %>>Claimed</option>
                 <option value="Resolved" <%= filters.status === 'Resolved' ? 'selected' : '' %>>Resolved</option>
               </select>
             </div>
@@ -135,7 +134,7 @@
                   <span class="badge rounded-pill bg-<%= report.report_type === 'Lost' ? 'danger' : 'success' %> me-1">
                     <%= report.report_type %>
                   </span>
-                  <span class="badge rounded-pill bg-<%= report.status === 'Resolved' ? 'secondary' : (report.status === 'Claimed' ? 'warning text-dark' : 'primary') %>">
+                  <span class="badge rounded-pill bg-<%= report.status === 'Resolved' ? 'secondary' : 'primary' %>">
                     <%= report.status %>
                   </span>
                 </div>
@@ -146,12 +145,33 @@
                     : report.description %>
                 </p>
 
-                <a
-                  href="/reports/<%= report.report_id %>"
-                  class="btn btn-primary report-details-btn mt-auto"
-                >
-                  View Details
-                </a>
+                <div class="mt-auto d-grid gap-2">
+                  <a
+                    href="/reports/<%= report.report_id %>"
+                    class="btn btn-primary report-details-btn"
+                  >
+                    View Details
+                  </a>
+
+                  <% if (
+                    user &&
+                    user.role !== 'admin' &&
+                    report.status === 'Open' &&
+                    report.report_type === 'Found' &&
+                    user.user_id !== report.user_id
+                  ) { %>
+                    <% if (claimedReportIds && claimedReportIds.includes(report.report_id)) { %>
+                      <button class="btn btn-outline-warning" disabled>Claim Submitted</button>
+                    <% } else { %>
+                      <a
+                        href="/user/claims/submit/<%= report.report_id %>"
+                        class="btn btn-warning"
+                      >
+                        Claim This Item
+                      </a>
+                    <% } %>
+                  <% } %>
+                </div>
               </div>
             </div>
           </div>

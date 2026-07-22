@@ -4,6 +4,7 @@
 //  search (Part D), claims & admin approval (Part E - Alvin, 25038212)
 // =====================================================================
 
+require('dotenv').config();
 const express = require('express');
 const mysql = require('mysql2');
 const session = require('express-session');
@@ -27,10 +28,10 @@ const upload = multer({ storage: storage });
 
 // ---------- Database connection (mysql2) ----------
 const db = mysql.createPool({
-  host: 'c237-adib-mysql.mysql.database.azure.com',
-  user: 'c237_026',
-  password: 'c237026@2026!',
-  database: 'c237_026_team2_ca2',
+  host: process.env.DB_HOST,
+  user: process.env.DB_USER,
+  password: process.env.DB_PASSWORD,
+  database: process.env.DB_NAME,
   ssl: { rejectUnauthorized: false },
   enableKeepAlive: true,
   keepAliveInitialDelay: 0
@@ -107,6 +108,33 @@ const checkAdmin = (req, res, next) => {
 app.use((req, res, next) => {
   res.locals.user = req.session.user || null;
   next();
+});
+
+// Navbar notification counts (Alvin) - shown as a number badge in the navbar.
+//  - admin: number of Pending claims waiting to be reviewed
+//  - user : number of Pending "I found your item" alerts on their lost reports
+app.use((req, res, next) => {
+  res.locals.pendingClaims = 0;
+  res.locals.pendingAlerts = 0;
+
+  const u = req.session.user;
+  if (!u) return next();
+
+  if (u.role === 'admin') {
+    db.query("SELECT COUNT(*) AS cnt FROM claims WHERE status = 'Pending'", (err, rows) => {
+      if (!err && rows.length) res.locals.pendingClaims = rows[0].cnt;
+      next();
+    });
+  } else {
+    const sql = `SELECT COUNT(*) AS cnt
+                 FROM found_notifications n
+                 JOIN reports r ON n.report_id = r.report_id
+                 WHERE r.user_id = ? AND n.status = 'Pending'`;
+    db.query(sql, [u.user_id], (err, rows) => {
+      if (!err && rows.length) res.locals.pendingAlerts = rows[0].cnt;
+      next();
+    });
+  }
 });
 
 // Done by Xavier
@@ -393,160 +421,9 @@ app.post('/admin/claims/delete/:id', checkAuthenticated, checkAdmin, (req, res) 
 });
 // Part C Done.
 
-// #####################################################################
-// #####       PART D - SEARCH, FILTERING AND CATEGORIES          #####
-// #####                        (May)                             #####
-// #####################################################################
-//
-//  Built ONLY from patterns taught in class:
-//  - Search form + filter logic  : Lesson 12 "Movie Mood" search
-//    (POST form, req.body, .toLowerCase(), .filter(), .includes())
-//  - SQL SELECT with LEFT JOINs  : same query as the Browse Reports
-//    route in this file (Part B)
-//  - db.query callbacks, ? placeholders, checkAuthenticated, flash
-//    messages : L15-L20 patterns already used throughout this file
+// PART D (search / filter / categories) is implemented on the homepage
+// GET / and POST / routes (May). The old /search routes were removed as dead code.
 
-// The JOIN query gives every report together with its category name,
-// location name and reporter name (same SQL as the /reports route).
-const searchSql = `
-  SELECT
-    r.*,
-    c.name AS category_name,
-    l.name AS location_name,
-    u.username AS reporter_name
-  FROM reports r
-  LEFT JOIN categories c
-    ON r.category_id = c.category_id
-  LEFT JOIN locations l
-    ON r.location_id = l.location_id
-  LEFT JOIN users u
-    ON r.user_id = u.user_id
-  ORDER BY r.created_at DESC
-`;
-
-// ---------- STEP 1: show the search page (Lesson 12 pattern) ----------
-// First visit: show the form plus ALL reports, so the user can see
-// what is available before filtering.
-app.get('/search', checkAuthenticated, (req, res) => {
-  db.query(searchSql, (err, reports) => {
-    if (err) return dbError(res, err);
-
-    // Load categories and locations from the database so the
-    // dropdowns are never hardcoded.
-    db.query('SELECT category_id, name FROM categories ORDER BY name', (catErr, categories) => {
-      if (catErr) return dbError(res, catErr);
-
-      db.query('SELECT location_id, name FROM locations ORDER BY name', (locErr, locations) => {
-        if (locErr) return dbError(res, locErr);
-
-        res.render('search', {
-          user: req.session.user,
-          reports: reports,
-          categories: categories,
-          locations: locations,
-          // empty filters on first visit, so the form starts blank
-          filters: { searchText: '', report_type: '', category_id: '', location_id: '', status: '', sort: 'newest' },
-          messages: req.flash('success'),
-          errors: req.flash('error')
-        });
-      });
-    });
-  });
-});
-
-// ---------- STEP 2: handle the search (Lesson 12 pattern) ----------
-// The form on search.ejs submits with method="POST", so the values
-// the user typed/chose arrive in req.body.
-app.post('/search', checkAuthenticated, (req, res) => {
-
-  // Read each form field. "|| ''" gives a default empty string
-  // if the field was left blank (same defaulting style as Part B).
-  const searchText = (req.body.searchText || '').toLowerCase();
-  const reportType = req.body.report_type || '';
-  const categoryId = req.body.category_id || '';
-  const locationId = req.body.location_id || '';
-  const status     = req.body.status || '';
-  const sort       = req.body.sort || 'newest';
-
-  // Get every report from the database first (with the JOINs),
-  // then narrow the list down in JavaScript, exactly like the
-  // Lesson 12 movie search narrowed the movies array.
-  db.query(searchSql, (err, reports) => {
-    if (err) return dbError(res, err);
-
-    // KEYWORD SEARCH (Lesson 12: movie.title.toLowerCase().includes(searchText))
-    // .filter() keeps only the reports where the callback returns true.
-    // A report matches if the keyword appears in the item name OR the
-    // description. .toLowerCase() on both sides makes it case-insensitive.
-    let results = reports.filter(report => {
-      return report.item_name.toLowerCase().includes(searchText) ||
-             (report.description || '').toLowerCase().includes(searchText);
-    });
-
-    // FILTER: Lost or Found.
-    // "All" in the dropdown sends an empty value, so the if is skipped
-    // and no filtering happens - "All" really means "do not filter".
-    if (reportType !== '') {
-      results = results.filter(report => report.report_type === reportType);
-    }
-
-    // FILTER: category.
-    // The dropdown sends the id as a string (e.g. "2") but the database
-    // gives a number (2), so String() converts before comparing.
-    if (categoryId !== '') {
-      results = results.filter(report => String(report.category_id) === categoryId);
-    }
-
-    // FILTER: campus location.
-    if (locationId !== '') {
-      results = results.filter(report => String(report.location_id) === locationId);
-    }
-
-    // FILTER: report status (Open / Claimed / Resolved).
-    if (status !== '') {
-      results = results.filter(report => report.status === status);
-    }
-
-    // SORTING: the SQL already returns newest first (ORDER BY created_at
-    // DESC, same as Browse Reports). "Oldest first" simply reverses
-    // the array.
-    if (sort === 'oldest') {
-      results = results.reverse();
-    }
-
-    // Reload the dropdown data, then re-render the same page with the
-    // narrowed results. "filters" is passed back so the form stays
-    // filled in with what the user chose.
-    db.query('SELECT category_id, name FROM categories ORDER BY name', (catErr, categories) => {
-      if (catErr) return dbError(res, catErr);
-
-      db.query('SELECT location_id, name FROM locations ORDER BY name', (locErr, locations) => {
-        if (locErr) return dbError(res, locErr);
-
-        res.render('search', {
-          user: req.session.user,
-          reports: results,
-          categories: categories,
-          locations: locations,
-          filters: {
-            searchText: req.body.searchText || '',
-            report_type: reportType,
-            category_id: categoryId,
-            location_id: locationId,
-            status: status,
-            sort: sort
-          },
-          messages: req.flash('success'),
-          errors: req.flash('error')
-        });
-      });
-    });
-  });
-});
-
-// #####################################################################
-// #####                   END OF PART D                          #####
-// #####################################################################
 
 // #####################################################################
 // #####            PART E - CLAIMS & ADMIN APPROVAL              #####
@@ -555,6 +432,11 @@ app.post('/search', checkAuthenticated, (req, res) => {
 
 // ---------- STUDENT: show the "submit a claim" form for a found item ----------
 app.get('/user/claims/submit/:reportId', checkAuthenticated, (req, res) => {
+  // Admins manage claims - they don't submit them.
+  if (req.session.user.role === 'admin') {
+    req.flash('error', 'Admins cannot submit claims.');
+    return res.redirect('/');
+  }
   const sql = 'SELECT * FROM reports WHERE report_id = ?';
   db.query(sql, [req.params.reportId], (err, results) => {
     if (err) return dbError(res, err);
@@ -573,6 +455,11 @@ app.get('/user/claims/submit/:reportId', checkAuthenticated, (req, res) => {
 
 // ---------- STUDENT: handle the claim submission ----------
 app.post('/user/claims/submit/:reportId', checkAuthenticated, upload.single('image'), (req, res) => {
+  // Admins manage claims - they don't submit them.
+  if (req.session.user.role === 'admin') {
+    req.flash('error', 'Admins cannot submit claims.');
+    return res.redirect('/');
+  }
   const reportId = req.params.reportId;
   const userId = req.session.user.user_id;
   const { claim_message } = req.body;
@@ -596,21 +483,25 @@ app.post('/user/claims/submit/:reportId', checkAuthenticated, upload.single('ima
       return res.redirect('/');
     }
 
-    // Insert the new claim as "Pending".
-    const insert = 'INSERT INTO claims (report_id, user_id, claim_message, image, status) VALUES (?, ?, ?, ?, "Pending")';
-    db.query(insert, [reportId, userId, claim_message, image], (err2) => {
-      if (err2) return dbError(res, err2);
+    // Prevent the same user from claiming the same item more than once.
+    db.query('SELECT claim_id FROM claims WHERE report_id = ? AND user_id = ?', [reportId, userId], (dupErr, existing) => {
+      if (dupErr) return dbError(res, dupErr);
+      if (existing.length > 0) {
+        req.flash('error', 'You have already submitted a claim for this item.');
+        return res.redirect('/user/claims');
+      }
 
-      // Mark the report as "Claimed" so others can see a claim is in progress.
-    db.query(insert, [reportId, userId, claim_message, image], (err2) => {
+      // Insert the new claim as "Pending".
+      const insert = 'INSERT INTO claims (report_id, user_id, claim_message, image, status) VALUES (?, ?, ?, ?, "Pending")';
+      db.query(insert, [reportId, userId, claim_message, image], (err2) => {
         if (err2) return dbError(res, err2);
 
         req.flash('success', 'Claim submitted! An admin will review it.');
         res.redirect('/user/claims');
-        });
       });
     });
   });
+});
 
 
 // =====================================================================
@@ -809,14 +700,22 @@ app.get('/', (req, res) => {
       db.query('SELECT location_id, name FROM locations ORDER BY name', (locErr, locations) => {
         if (locErr) return dbError(res, locErr);
 
-        res.render('reports', {
-          user: req.session.user,
-          reports,
-          categories,
-          locations,
-          filters: { searchText: '', report_type: '', category_id: '', location_id: '', status: 'Open', sort: 'newest' },
-          messages: req.flash('success'),
-          errors: req.flash('error')
+        // report_ids the logged-in user has already claimed (0 = guest -> none)
+        const uid = req.session.user ? req.session.user.user_id : 0;
+        db.query('SELECT report_id FROM claims WHERE user_id = ?', [uid], (clErr, claimRows) => {
+          if (clErr) return dbError(res, clErr);
+          const claimedReportIds = claimRows.map(c => c.report_id);
+
+          res.render('reports', {
+            user: req.session.user,
+            reports,
+            categories,
+            locations,
+            claimedReportIds,
+            filters: { searchText: '', report_type: '', category_id: '', location_id: '', status: 'Open', sort: 'newest' },
+            messages: req.flash('success'),
+            errors: req.flash('error')
+          });
         });
       });
     });
@@ -887,21 +786,29 @@ app.post('/', (req, res) => {
       db.query('SELECT location_id, name FROM locations ORDER BY name', (locErr, locations) => {
         if (locErr) return dbError(res, locErr);
 
-        res.render('reports', {
-          user: req.session.user,
-          reports: results,
-          categories,
-          locations,
-          filters: {
-            searchText: req.body.searchText || '',
-            report_type: reportType,
-            category_id: categoryId,
-            location_id: locationId,
-            status: status,
-            sort: sort
-          },
-          messages: req.flash('success'),
-          errors: req.flash('error')
+        // report_ids the logged-in user has already claimed (0 = guest -> none)
+        const uid = req.session.user ? req.session.user.user_id : 0;
+        db.query('SELECT report_id FROM claims WHERE user_id = ?', [uid], (clErr, claimRows) => {
+          if (clErr) return dbError(res, clErr);
+          const claimedReportIds = claimRows.map(c => c.report_id);
+
+          res.render('reports', {
+            user: req.session.user,
+            reports: results,
+            categories,
+            locations,
+            claimedReportIds,
+            filters: {
+              searchText: req.body.searchText || '',
+              report_type: reportType,
+              category_id: categoryId,
+              location_id: locationId,
+              status: status,
+              sort: sort
+            },
+            messages: req.flash('success'),
+            errors: req.flash('error')
+          });
         });
       });
     });
@@ -968,11 +875,18 @@ app.get('/reports/:id', (req, res) => {
       return res.redirect('/');
     }
 
-    res.render('reportDetails', {
-      user: req.session.user,
-      report: results[0],
-      messages: req.flash('success'),
-      errors: req.flash('error')
+    // Has the logged-in user already claimed this report? (0 = guest -> no)
+    const uid = req.session.user ? req.session.user.user_id : 0;
+    db.query('SELECT claim_id FROM claims WHERE report_id = ? AND user_id = ?', [reportId, uid], (clErr, claimRows) => {
+      if (clErr) return dbError(res, clErr);
+
+      res.render('reportDetails', {
+        user: req.session.user,
+        report: results[0],
+        alreadyClaimed: claimRows.length > 0,
+        messages: req.flash('success'),
+        errors: req.flash('error')
+      });
     });
   });
 });

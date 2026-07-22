@@ -24,7 +24,6 @@
           <thead>
             <tr>
               <th>Item</th>
-              <th>Item Image</th>
               <th>Your Message</th>
               <th>Proof Image</th>
               <th>Status</th>
@@ -34,15 +33,13 @@
           <tbody>
             <% claims.forEach(claim => { %>
               <tr>
-                <td><%= claim.item_name %></td>
                 <td>
                   <% if (claim.report_image) { %>
                     <a href="/images/<%= claim.report_image %>" target="_blank">
-                      <img src="/images/<%= claim.report_image %>" alt="<%= claim.item_name %>" style="max-width: 80px; max-height: 80px; border-radius: 4px;">
+                      <img src="/images/<%= claim.report_image %>" alt="<%= claim.item_name %>" style="max-width: 80px; max-height: 80px; border-radius: 4px;" class="d-block mb-1">
                     </a>
-                  <% } else { %>
-                    <span class="text-muted">No image</span>
                   <% } %>
+                  <%= claim.item_name %>
                 </td>
                 <td><%= claim.claim_message %></td>
                 <td>

@@ -8,6 +8,7 @@
     "dev": "npx nodemon app.js"
   },
   "dependencies": {
+    "dotenv": "^17.4.2",
     "ejs": "^6.0.1",
     "express": "^5.2.1",
     "express-session": "^1.19.0",
