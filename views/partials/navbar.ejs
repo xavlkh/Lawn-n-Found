@@ -18,21 +18,35 @@
           </li>
 
           <% if (user) { %>
+          <% var navTotal = (user.role === 'admin' ? pendingClaims : pendingAlerts); %>
           <li class="nav-item dropdown">
             <a class="nav-link dropdown-toggle text-info" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
               Hi, <%= user.username %>
+              <% if (navTotal > 0) { %>
+                <span class="badge bg-danger rounded-pill"><%= navTotal %></span>
+              <% } %>
             </a>
             <ul class="dropdown-menu">
                       <% if (user.role === 'admin') { %>
-                            <li><a class="dropdown-item" href="/admin/claims">Manage Claims</a></li>
-                            <li><a class="dropdown-item" href="/admin/users">Manage Users</a></li>              
+                            <li>
+                              <a class="dropdown-item d-flex justify-content-between align-items-center" href="/admin/claims">
+                                Manage Claims
+                                <% if (pendingClaims > 0) { %><span class="badge bg-danger rounded-pill"><%= pendingClaims %></span><% } %>
+                              </a>
+                            </li>
+                            <li><a class="dropdown-item" href="/admin/users">Manage Users</a></li>
                       <% } else { %>
                             <li><a class="dropdown-item" href="/user/reports">My Reports</a></li>
-                            <li><a class="dropdown-item" href="/user/lost-item-alerts">Lost Item Alerts</a></li>
-                            <li><a class="dropdown-item" href="/user/claims">My Claims</a></li>                 
-                      <% } %>                                                    
+                            <li>
+                              <a class="dropdown-item d-flex justify-content-between align-items-center" href="/user/lost-item-alerts">
+                                Lost Item Alerts
+                                <% if (pendingAlerts > 0) { %><span class="badge bg-danger rounded-pill"><%= pendingAlerts %></span><% } %>
+                              </a>
+                            </li>
+                            <li><a class="dropdown-item" href="/user/claims">My Claims</a></li>
+                      <% } %>
                       <li><hr class="dropdown-divider"></li>
-                      <li><a class="dropdown-item" href="/logout">Logout</a></li>                 
+                      <li><a class="dropdown-item" href="/logout">Logout</a></li>
             </ul>
           </li>
         <% } else { %>

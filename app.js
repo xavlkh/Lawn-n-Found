@@ -109,6 +109,33 @@ app.use((req, res, next) => {
   next();
 });
 
+// Navbar notification counts (Alvin) - shown as a number badge in the navbar.
+//  - admin: number of Pending claims waiting to be reviewed
+//  - user : number of Pending "I found your item" alerts on their lost reports
+app.use((req, res, next) => {
+  res.locals.pendingClaims = 0;
+  res.locals.pendingAlerts = 0;
+
+  const u = req.session.user;
+  if (!u) return next();
+
+  if (u.role === 'admin') {
+    db.query("SELECT COUNT(*) AS cnt FROM claims WHERE status = 'Pending'", (err, rows) => {
+      if (!err && rows.length) res.locals.pendingClaims = rows[0].cnt;
+      next();
+    });
+  } else {
+    const sql = `SELECT COUNT(*) AS cnt
+                 FROM found_notifications n
+                 JOIN reports r ON n.report_id = r.report_id
+                 WHERE r.user_id = ? AND n.status = 'Pending'`;
+    db.query(sql, [u.user_id], (err, rows) => {
+      if (!err && rows.length) res.locals.pendingAlerts = rows[0].cnt;
+      next();
+    });
+  }
+});
+
 // Done by Xavier
 // Registration route
 app.get('/register', (req, res) => {
