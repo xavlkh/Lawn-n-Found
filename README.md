@@ -121,13 +121,13 @@ npm install
 **Development mode** (auto-restarts on changes):
 
 ```bash
-npm run dev
+npx nodemon app.js
 ```
 
 **Production mode:**
 
 ```bash
-npm start
+node app.js
 ```
 
 ### 6. Open in Browser
