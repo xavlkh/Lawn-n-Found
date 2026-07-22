@@ -87,10 +87,13 @@ INSERT INTO users (username, email, password, role) VALUES
   ('Alvin',     'alvin@student.rp.edu.sg',    SHA1('password'), 'user');
 
 INSERT INTO categories (name) VALUES
-  ('Electronics'), ('Books'), ('Clothing'), ('Cards & IDs');
+  ('Electronics'), ('Books'), ('Clothing'), ('Cards & IDs'), ('Others');
 
 INSERT INTO locations (name) VALUES
-  ('Library'), ('Canteen'), ('Lecture Theatre 1'), ('Sports Hall');
+  ('South Canteen'), ('North Canteen'), ('Lawn Canteen'),
+  ('E1'), ('E2'), ('E3'), ('E4'), ('E5'), ('E6'),
+  ('W1'), ('W2'), ('W3'), ('W4'), ('W5'), ('W6'),
+  ('TRCC');
 
 -- A couple of FOUND items so there is something to claim, plus one LOST item.
 INSERT INTO reports (user_id, report_type, item_name, description, category_id, location_id, date_lost_found, status, image) VALUES

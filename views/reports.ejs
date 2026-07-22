@@ -131,12 +131,28 @@
                     : report.description %>
                 </p>
 
-                <a
-                  href="/reports/<%= report.report_id %>"
-                  class="btn btn-primary report-details-btn mt-auto"
-                >
-                  View Details
-                </a>
+                <div class="mt-auto d-grid gap-2">
+                  <a
+                    href="/reports/<%= report.report_id %>"
+                    class="btn btn-primary report-details-btn"
+                  >
+                    View Details
+                  </a>
+
+                  <% if (
+                    user &&
+                    report.status === 'Open' &&
+                    report.report_type === 'Found' &&
+                    user.user_id !== report.user_id
+                  ) { %>
+                    <a
+                      href="/user/claims/submit/<%= report.report_id %>"
+                      class="btn btn-success"
+                    >
+                      Claim This Item
+                    </a>
+                  <% } %>
+                </div>
               </div>
             </div>
           </div>

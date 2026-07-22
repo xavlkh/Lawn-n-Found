@@ -531,16 +531,11 @@ app.post('/user/claims/submit/:reportId', checkAuthenticated, upload.single('ima
     db.query(insert, [reportId, userId, claim_message, image], (err2) => {
       if (err2) return dbError(res, err2);
 
-      // Mark the report as "Claimed" so others can see a claim is in progress.
-    db.query(insert, [reportId, userId, claim_message, image], (err2) => {
-        if (err2) return dbError(res, err2);
-
-        req.flash('success', 'Claim submitted! An admin will review it.');
-        res.redirect('/user/claims');
-        });
-      });
+      req.flash('success', 'Claim submitted! An admin will review it.');
+      res.redirect('/user/claims');
     });
   });
+});
 
 
 // =====================================================================
