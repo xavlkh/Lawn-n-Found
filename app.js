@@ -4,7 +4,7 @@
 //  search (Part D), claims & admin approval (Part E - Alvin, 25038212)
 // =====================================================================
 
-require('dotenv').config();
+const dotenv = require('dotenv').config();
 const express = require('express');
 const mysql = require('mysql2');
 const session = require('express-session');
