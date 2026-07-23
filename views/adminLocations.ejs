@@ -2,97 +2,95 @@
 <html lang="en">
 <head>
   <%- include('partials/head') %>
-  <title>Manage Locations</title>
+  <title>Manage Locations | Lawn & Found</title>
 </head>
 <body>
+  <%- include('partials/navbar') %>
 
-<%- include('partials/navbar') %>
+  <div class="container mt-4">
+    <%- include('partials/messages') %>
 
-<div class="container mt-4">
-  <%- include('partials/messages') %>
-
-  <div class="d-flex justify-content-between align-items-center mb-4">
-    <div>
-      <h2 class="mb-1">Manage Locations</h2>
-      <p class="text-muted mb-0">
-        Add, update and delete item locations.
-      </p>
+    <div class="d-flex justify-content-between align-items-center mb-3">
+      <div>
+        <h2 class="mb-1">Manage Locations</h2>
+        <p class="text-muted mb-0">Add, update and delete item locations.</p>
+      </div>
+      <a href="/admin/locations/add" class="btn btn-primary">Add Location</a>
     </div>
 
-    <a href="/admin/locations/add" class="btn btn-primary">
-      <i class="bi bi-plus-circle"></i> Add Location
-    </a>
+    <div class="mb-3">
+      <input
+        type="text"
+        id="searchInput"
+        class="form-control"
+        placeholder="Search locations..."
+        onkeyup="filterTable()"
+      >
+    </div>
+
+    <% if (locations.length === 0) { %>
+      <div class="alert alert-info">
+        No locations found.
+      </div>
+    <% } else { %>
+      <div class="table-responsive">
+        <table class="table table-bordered align-middle" id="locationsTable">
+          <thead class="table-dark">
+            <tr>
+              <th>ID</th>
+              <th>Location Name</th>
+              <th style="width: 180px;">Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% locations.forEach(location => { %>
+              <tr>
+                <td><%= location.location_id %></td>
+                <td><%= location.name %></td>
+                <td>
+                  <div class="table-action">
+                    <a
+                      href="/admin/locations/update/<%= location.location_id %>"
+                      class="btn btn-warning btn-sm">
+                      Update
+                    </a>
+                    <form
+                      action="/admin/locations/delete/<%= location.location_id %>"
+                      method="POST"
+                      class="d-inline m-0">
+                      <button
+                        type="submit"
+                        class="btn btn-danger btn-sm"
+                        onclick="return confirm('Delete this location?');">
+                        Delete
+                      </button>
+                    </form>
+                  </div>
+                </td>
+              </tr>
+            <% }) %>
+          </tbody>
+        </table>
+      </div>
+      <p class="text-muted">Total locations: <%= locations.length %></p>
+    <% } %>
+    <div class="mb-4 pb-4"></div>
   </div>
 
-  <% if (locations.length === 0) { %>
+  <script>
+    function filterTable() {
+      const input = document.getElementById('searchInput').value.toLowerCase();
+      const rows = document.querySelectorAll('#locationsTable tbody tr');
+      let visibleCount = 0;
 
-    <div class="alert alert-info">
-      No locations found.
-    </div>
-
-  <% } else { %>
-
-    <div class="table-responsive">
-      <table class="table table-striped align-middle">
-
-        <thead class="table-dark">
-          <tr>
-            <th>ID</th>
-            <th>Locations Name</th>
-            <th style="width:180px;">Action</th>
-          </tr>
-        </thead>
-
-        <tbody>
-
-          <% locations.forEach(location => { %>
-
-            <tr>
-
-              <td><%= location.location_id %></td>
-
-              <td><%= location.name %></td>
-
-              <td>
-                <div class="d-flex gap-2">
-
-                  <a
-                    href="/admin/locations/update/<%= location.location_id %>"
-                    class="btn btn-warning btn-sm">
-                    Update
-                  </a>
-
-                  <form
-                    action="/admin/locations/delete/<%= location.location_id %>"
-                    method="POST"
-                    class="d-inline">
-
-                    <button
-                      type="submit"
-                      class="btn btn-danger btn-sm"
-                      onclick="return confirm('Delete this category?');">
-
-                      Delete
-
-                    </button>
-
-                  </form>
-
-                </div>
-              </td>
-
-            </tr>
-
-          <% }) %>
-
-        </tbody>
-
-      </table>
-    </div>
-
-  <% } %>
-
-</div>
-
+      rows.forEach(row => {
+        const text = row.textContent.toLowerCase();
+        const visible = text.includes(input);
+        row.style.display = visible ? '' : 'none';
+        if (visible) visibleCount++;
+      });
+    }
+  </script>
+<%- include('partials/footer') %>
 </body>
 </html>

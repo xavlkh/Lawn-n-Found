@@ -37,9 +37,6 @@
               <span class="badge rounded-pill bg-<%= report.status === 'Resolved' ? 'secondary' : 'primary' %> fs-6">
                 <%= report.status %>
               </span>
-              <% if (user && user.user_id === report.user_id) { %>
-                <span class="badge rounded-pill bg-info text-dark fs-6">Your Report</span>
-              <% } %>
             </div>
 
             <hr>
@@ -64,15 +61,17 @@
               <dd class="col-sm-7"><%= new Date(report.created_at).toLocaleString('en-SG', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' }) %></dd>
             </dl>
 
-            <% if (user && report.status === 'Open') { %>
+            <% if (report.status === 'Open') { %>
               <div class="d-flex flex-wrap gap-2 mt-3">
-                <% if (
-                  report.report_type === 'Found' &&
-                  user.role !== 'admin' &&
-                  user.user_id !== report.user_id
-                ) { %>
-                  <% if (alreadyClaimed) { %>
-                    <button class="btn btn-outline-warning" disabled>Claim Submitted</button>
+                <% if (report.report_type === 'Found') { %>
+                  <% if (!user) { %>
+                    <button class="btn btn-secondary" disabled>Login to claim</button>
+                  <% } else if (user.role === 'admin') { %>
+                    <button class="btn btn-secondary" disabled>Admin cannot claim</button>
+                  <% } else if (user.user_id === report.user_id) { %>
+                    <button class="btn btn-secondary" disabled>Cannot claim own report</button>
+                  <% } else if (alreadyClaimed) { %>
+                    <button class="btn btn-secondary" disabled>Claim Submitted</button>
                   <% } else { %>
                     <a
                       href="/user/claims/submit/<%= report.report_id %>"
@@ -83,35 +82,31 @@
                   <% } %>
                 <% } %>
 
-                <% if (
-                  report.report_type === 'Lost' &&
-                  user.user_id !== report.user_id
-                ) { %>
-                  <a
-                    href="/user/lost-item-alerts/submit/<%= report.report_id %>"
-                    class="btn btn-success"
-                  >
-                    I Found This Item
-                  </a>
-                <% } %>
-
-                <% if (
-                  report.report_type === 'Lost' &&
-                  user.user_id === report.user_id
-                ) { %>
-                  <form
-                    action="/reports/<%= report.report_id %>/mark-recovered"
-                    method="POST"
-                    class="d-inline"
-                  >
-                    <button
-                      type="submit"
-                      class="btn btn-success"
-                      onclick="return confirm('Confirm that you recovered this item?');"
+                <% if (report.report_type === 'Lost') { %>
+                  <% if (!user) { %>
+                    <button class="btn btn-secondary" disabled>Login to notify</button>
+                  <% } else if (user.user_id === report.user_id) { %>
+                    <form
+                      action="/reports/<%= report.report_id %>/mark-recovered"
+                      method="POST"
+                      class="d-inline"
                     >
-                      Mark as Recovered
-                    </button>
-                  </form>
+                      <button
+                        type="submit"
+                        class="btn btn-success"
+                        onclick="return confirm('Confirm that you recovered this item?');"
+                      >
+                        Mark as Recovered
+                      </button>
+                    </form>
+                  <% } else { %>
+                    <a
+                      href="/user/lost-item-alerts/submit/<%= report.report_id %>"
+                      class="btn btn-warning"
+                    >
+                      I Found This Item
+                    </a>
+                  <% } %>
                 <% } %>
               </div>
             <% } %>
@@ -121,5 +116,6 @@
     </div>
     <div class="mb-4 pb-4"></div>
   </div>
+<%- include('partials/footer') %>
 </body>
 </html>

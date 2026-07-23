@@ -19,7 +19,7 @@ A campus lost-and-found portal for Republic Polytechnic students to report, sear
 
 ## About
 
-**Lawn & Found** is a web-based lost-and-found management system built for campus use. Students can report lost items, post found items, claim items they recognize, and notify owners when they spot a belonging. Administrators oversee the entire workflow -- approving claims, managing users, and resolving reports.
+**Lawn & Found** is a web-based lost-and-found management system built for campus use. Students can report lost items, post found items, claim items they recognize, and notify owners when they spot a belonging. Administrators oversee the entire workflow -- approving claims, managing users, locations, and categories, and resolving reports.
 
 The portal was developed as a team project (CA2) for the module **C237-026 Software Application Development** at Republic Polytechnic, Singapore.
 
@@ -30,14 +30,17 @@ The portal was developed as a team project (CA2) for the module **C237-026 Softw
 - **Search & Filter** -- Browse reports by keyword, type (Lost/Found), category, location, and status. Sort by newest or oldest.
 - **Submit a Claim** -- Found a reported item? Submit a claim with a message and proof photo. Duplicate claims are blocked.
 - **"I Found This Item" Alerts** -- Notify the owner of a lost item that you found it. Upload a photo and leave a message.
-- **Confirm Recovery** -- Owners can confirm that a found notification matches their item, which marks the report as resolved.
+- **Confirm/Dismiss Alerts** -- Owners can confirm a found notification (marks report resolved) or dismiss it as incorrect.
 - **My Reports / My Claims** -- View and manage all your submitted reports and claims in one place.
-- **Self-Recovery** -- Mark your own lost item as recovered directly.
+- **Mark as Recovered** -- Owners can mark their own lost item as recovered directly from the landing page or report details.
+- **Contextual Buttons** -- Disabled buttons guide users: "Login to claim", "Cannot claim own report", "Claim Submitted", etc.
 
 ### For Administrators
 - **Manage Claims** -- Review all claims with item details, claimant info, proof images, and claim messages. Approve or reject with a reason.
 - **Auto-Rejection** -- Approving a claim automatically rejects all other pending claims for the same item and marks it resolved.
-- **Manage Users** -- View all registered users and promote/demote roles between user and admin.
+- **Manage Users** -- View all registered users, promote/demote roles, and delete accounts.
+- **Manage Locations** -- Add, update, and delete campus locations used in reports.
+- **Manage Categories** -- Add, update, and delete item categories used in reports.
 - **Pending Claim Badge** -- Navbar badge showing the count of claims awaiting review.
 
 ### General
@@ -46,6 +49,7 @@ The portal was developed as a team project (CA2) for the module **C237-026 Softw
 - **Session Authentication** -- Server-side sessions with a 1-week cookie expiry.
 - **Flash Messages** -- Success/error feedback on all actions.
 - **Responsive UI** -- Bootstrap 5.3.3 with mobile-friendly navigation.
+- **Footer** -- Site footer with copyright information on every page.
 
 ## Tech Stack
 
@@ -67,7 +71,6 @@ The portal was developed as a team project (CA2) for the module **C237-026 Softw
 
 - [Node.js](https://nodejs.org) >= 18
 - [MySQL](https://www.mysql.com) 8.x (local install or remote server)
-- [MySQL Workbench](https://www.mysql.com/products/workbench/) (recommended for schema import)
 
 ### 1. Clone the Repository
 
@@ -78,18 +81,7 @@ cd Lawn-n-Found
 
 ### 2. Set Up the Database
 
-Open MySQL Workbench and run the schema file to create the database, tables, and seed data:
-
-```sql
--- File: sql/schema.sql
--- This creates the database 'c237_026_team2_ca2' with all tables and sample data
-```
-
-Or from the command line:
-
-```bash
-mysql -u <your_user> -p < sql/schema.sql
-```
+Open your SQL editor (e.g. MySQL Workbench, phpMyAdmin, DBeaver) and run the contents of `sql/schema.sql` to create the database, tables, and seed data.
 
 > [!NOTE]
 > The schema includes 3 pre-loaded users, 5 categories, 16 campus locations, and 3 sample reports.
@@ -184,7 +176,8 @@ Lawn-n-Found/
 │   ├── partials/
 │   │   ├── head.ejs           # Shared <head> with Bootstrap CDN
 │   │   ├── navbar.ejs         # Role-based navigation bar
-│   │   └── messages.ejs       # Flash message component
+│   │   ├── messages.ejs       # Flash message component
+│   │   └── footer.ejs         # Site footer
 │   ├── login.ejs              # Login page
 │   ├── register.ejs           # Registration page
 │   ├── reports.ejs            # Homepage: browse/search/filter reports
@@ -198,7 +191,11 @@ Lawn-n-Found/
 │   ├── userLostItemAlerts.ejs # Lost Item Alerts inbox
 │   ├── adminClaims.ejs        # Admin: Manage Claims
 │   ├── updateClaim.ejs        # Admin: Edit Claim form
-│   └── adminUsers.ejs         # Admin: Manage Users
+│   ├── adminUsers.ejs         # Admin: Manage Users
+│   ├── adminLocations.ejs     # Admin: Manage Locations
+│   ├── adminCategories.ejs    # Admin: Manage Categories
+│   ├── locationForm.ejs       # Admin: Add/Edit Location form
+│   └── categoryForm.ejs       # Admin: Add/Edit Category form
 └── .github/
     └── workflows/
         └── keep-alive.yml     # GitHub Actions: prevents Render spin-down

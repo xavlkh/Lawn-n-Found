@@ -65,31 +65,33 @@
                     notification.status === 'Pending' &&
                     notification.report_status === 'Open'
                   ) { %>
-                    <form
-                      action="/user/lost-item-alerts/<%= notification.notification_id %>/confirm"
-                      method="POST"
-                      class="d-inline"
-                    >
-                      <button
-                        type="submit"
-                        class="btn btn-success btn-sm"
+                    <div class="table-action">
+                      <form
+                        action="/user/lost-item-alerts/<%= notification.notification_id %>/confirm"
+                        method="POST"
+                        class="d-inline m-0"
                       >
-                        Confirm Recovery
-                      </button>
-                    </form>
+                        <button
+                          type="submit"
+                          class="btn btn-success btn-sm"
+                        >
+                          Confirm Recovery
+                        </button>
+                      </form>
 
-                    <form
-                      action="/user/lost-item-alerts/<%= notification.notification_id %>/dismiss"
-                      method="POST"
-                      class="d-inline"
-                    >
-                      <button
-                        type="submit"
-                        class="btn btn-outline-danger btn-sm"
+                      <form
+                        action="/user/lost-item-alerts/<%= notification.notification_id %>/dismiss"
+                        method="POST"
+                        class="d-inline m-0"
                       >
-                        Not My Item
-                      </button>
-                    </form>
+                        <button
+                          type="submit"
+                          class="btn btn-outline-danger btn-sm"
+                        >
+                          Not My Item
+                        </button>
+                      </form>
+                    </div>
                   <% } else { %>
                     <span class="text-muted">Handled</span>
                   <% } %>
@@ -102,5 +104,6 @@
     <% } %>
     <div class="mb-4 pb-4"></div>
   </div>
+<%- include('partials/footer') %>
 </body>
 </html>

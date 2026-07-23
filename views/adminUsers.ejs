@@ -27,7 +27,7 @@
               <th>Email</th>
               <th>Role</th>
               <th>Joined</th>
-              <th>Action</th>
+              <th style="width: 180px;">Action</th>
             </tr>
           </thead>
           <tbody>
@@ -46,15 +46,20 @@
                   <% if (u.user_id === user.user_id) { %>
                     <span class="text-muted">Current user</span>
                   <% } else { %>
-                    <form action="/admin/users/<%= u.user_id %>/role" method="POST" class="d-inline">
-                      <% if (u.role === 'user') { %>
-                        <input type="hidden" name="role" value="admin">
-                        <button type="submit" class="btn btn-success btn-sm">Make Admin</button>
-                      <% } else { %>
-                        <input type="hidden" name="role" value="user">
-                        <button type="submit" class="btn btn-warning btn-sm">Remove Admin</button>
-                      <% } %>
-                    </form>
+                    <div class="table-action">
+                      <form action="/admin/users/<%= u.user_id %>/role" method="POST" class="d-inline m-0">
+                        <% if (u.role === 'user') { %>
+                          <input type="hidden" name="role" value="admin">
+                          <button type="submit" class="btn btn-success btn-sm">Make Admin</button>
+                        <% } else { %>
+                          <input type="hidden" name="role" value="user">
+                          <button type="submit" class="btn btn-warning btn-sm">Remove Admin</button>
+                        <% } %>
+                      </form>
+                      <form action="/admin/users/<%= u.user_id %>/delete" method="POST" class="d-inline m-0" onsubmit="return confirm('Delete this account?');">
+                        <button type="submit" class="btn btn-danger btn-sm">Delete</button>
+                      </form>
+                    </div>
                   <% } %>
                 </td>
               </tr>
@@ -66,5 +71,6 @@
     <% } %>
     <div class="mb-4 pb-4"></div>
   </div>
+<%- include('partials/footer') %>
 </body>
 </html>

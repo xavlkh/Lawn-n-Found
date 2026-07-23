@@ -154,20 +154,45 @@
                   </a>
 
                   <% if (
-                    user &&
-                    user.role !== 'admin' &&
                     report.status === 'Open' &&
-                    report.report_type === 'Found' &&
-                    user.user_id !== report.user_id
+                    report.report_type === 'Found'
                   ) { %>
-                    <% if (claimedReportIds && claimedReportIds.includes(report.report_id)) { %>
-                      <button class="btn btn-outline-warning" disabled>Claim Submitted</button>
+                    <% if (!user) { %>
+                      <button class="btn btn-secondary" disabled>Login to claim</button>
+                    <% } else if (user.role === 'admin') { %>
+                      <button class="btn btn-secondary" disabled>Admin cannot claim</button>
+                    <% } else { %>
+                      <% if (user.user_id === report.user_id) { %>
+                        <button class="btn btn-secondary" disabled>Cannot claim own report</button>
+                      <% } else if (claimedReportIds && claimedReportIds.includes(report.report_id)) { %>
+                        <button class="btn btn-secondary" disabled>Claim Submitted</button>
+                      <% } else { %>
+                        <a
+                          href="/user/claims/submit/<%= report.report_id %>"
+                          class="btn btn-warning"
+                        >
+                          Claim This Item
+                        </a>
+                      <% } %>
+                    <% } %>
+                  <% } %>
+
+                  <% if (
+                    report.status === 'Open' &&
+                    report.report_type === 'Lost'
+                  ) { %>
+                    <% if (!user) { %>
+                      <button class="btn btn-secondary" disabled>Login to notify</button>
+                    <% } else if (user.user_id === report.user_id) { %>
+                      <form action="/reports/<%= report.report_id %>/mark-recovered" method="POST" class="d-grid">
+                        <button type="submit" class="btn btn-success" onclick="return confirm('Confirm that you recovered this item?');">Mark as Recovered</button>
+                      </form>
                     <% } else { %>
                       <a
-                        href="/user/claims/submit/<%= report.report_id %>"
+                        href="/user/lost-item-alerts/submit/<%= report.report_id %>"
                         class="btn btn-warning"
                       >
-                        Claim This Item
+                        I Found This Item
                       </a>
                     <% } %>
                   <% } %>
@@ -180,5 +205,6 @@
     <% } %>
     <div class="mb-4 pb-4"></div>
   </div>
+<%- include('partials/footer') %>
 </body>
 </html>

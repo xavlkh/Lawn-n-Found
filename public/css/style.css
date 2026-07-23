@@ -32,3 +32,16 @@ body {
   object-fit: contain;
   background-color: #fff;
 }
+
+/* Consistent spacing between action buttons in table cells */
+.table-action {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.375rem;
+}
+
+/* Push footer to bottom on short pages */
+.footer-spacer {
+  flex: 1;
+}

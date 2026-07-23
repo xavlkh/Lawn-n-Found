@@ -15,6 +15,8 @@ const app = express();
 
 
 // ---------- File upload config (multer) ----------
+// Multer handles multipart/form-data file uploads. Files are saved to public/images/
+// using the original filename (note: in production, use a random filename to prevent overwrites).
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
     cb(null, 'public/images');
@@ -27,6 +29,8 @@ const storage = multer.diskStorage({
 const upload = multer({ storage: storage });
 
 // ---------- Database connection (mysql2) ----------
+// createPool manages a pool of reusable connections (default 10).
+// SSL is required for cloud-hosted MySQL (e.g. Azure, Render).
 const db = mysql.createPool({
   host: process.env.DB_HOST,
   user: process.env.DB_USER,
@@ -57,6 +61,9 @@ app.use(express.urlencoded({ extended: false }));
 app.use(express.static('public'));
 
 // Sessions (L19 pattern) - lets the server remember who is logged in.
+// resave: false - don't save session if unmodified
+// saveUninitialized: false - don't create session until something is stored
+// cookie.maxAge: 1 week in milliseconds
 app.use(session({
   secret: 'secret',
   resave: false,
@@ -66,6 +73,8 @@ app.use(session({
 }));
 
 // Flash messages (session-based, no connect-flash needed)
+// Custom flash implementation that stores messages in the session.
+// Usage: req.flash('success', 'message') to set, req.flash('success') to read and clear.
 app.use((req, res, next) => {
   if (!req.session.flash) req.session.flash = {};
   req.flash = (type, message) => {
@@ -113,6 +122,7 @@ app.use((req, res, next) => {
 // Navbar notification counts (Alvin) - shown as a number badge in the navbar.
 //  - admin: number of Pending claims waiting to be reviewed
 //  - user : number of Pending "I found your item" alerts on their lost reports
+// This middleware runs on every request to keep the counts up to date.
 app.use((req, res, next) => {
   res.locals.pendingClaims = 0;
   res.locals.pendingAlerts = 0;
@@ -161,7 +171,8 @@ const validateRegistration = (req, res, next) => {
 };
 
 // Done by Xavier
-// Integrate validateRegistration into the register route.
+// Handle registration form submission.
+// Password is hashed with SHA1 before storing in the database.
 app.post('/register', validateRegistration, (req, res) => {
     const role = 'user'
     const { username, email, password } = req.body;
@@ -188,7 +199,8 @@ app.get('/login', (req, res) => {
 });
 
 // Done by Xavier
-// Login route for form submission
+// Handle login form submission.
+// Password is hashed with SHA1 before comparing to the database.
 app.post('/login', (req, res) => {
     const { email, password } = req.body;
 
@@ -217,14 +229,16 @@ app.post('/login', (req, res) => {
     });
 });
 
+// Logout (Xavier) - destroys the session and redirects to home.
 app.get('/logout', (req, res) => {
   req.session.destroy();
   res.redirect('/');
 });
 
 
-// Part C - Update and Delete Reports/Claims - Done by Ahmad.\\
-// Update User report
+// Part C - Update and Delete Reports/Claims - Done by Ahmad.
+// Show the update report form with pre-filled data.
+// Only the report owner can access this page.
 app.get('/update/:id', checkAuthenticated, (req, res) => {
     const reportId = req.params.id;
 
@@ -267,6 +281,9 @@ app.get('/update/:id', checkAuthenticated, (req, res) => {
     });
 });
 
+// Handle report update with ownership check.
+// Only the report owner can update their own reports.
+// If a new image is uploaded, it replaces the old one.
 app.post('/update/:id', checkAuthenticated, upload.single('image'), (req, res) => {
     const reportId = req.params.id;
 
@@ -279,77 +296,106 @@ app.post('/update/:id', checkAuthenticated, upload.single('image'), (req, res) =
         date_lost_found
     } = req.body;
 
-    let sql;
-    let values;
-
-    if (req.file) {
-        sql = `
-            UPDATE reports
-            SET report_type=?,
-                item_name=?,
-                description=?,
-                category_id=?,
-                location_id=?,
-                date_lost_found=?,
-                image=?
-            WHERE report_id=?`;
-
-        values = [
-            report_type,
-            item_name,
-            description,
-            category_id,
-            location_id,
-            date_lost_found,
-            req.file.filename,
-            reportId
-        ];
-    } else {
-        sql = `
-            UPDATE reports
-            SET report_type=?,
-                item_name=?,
-                description=?,
-                category_id=?,
-                location_id=?,
-                date_lost_found=?
-            WHERE report_id=?`;
-
-        values = [
-            report_type,
-            item_name,
-            description,
-            category_id,
-            location_id,
-            date_lost_found,
-            reportId
-        ];
-    }
-
-    db.query(sql, values, (err) => {
+    const checkOwnershipSql = "SELECT user_id FROM reports WHERE report_id = ?";
+    db.query(checkOwnershipSql, [reportId], (err, results) => {
         if (err) return dbError(res, err);
 
-        req.flash("success", "Report updated successfully.");
-        res.redirect("/reports/" + reportId);
+        if (results.length === 0) {
+            req.flash("error", "Report not found.");
+            return res.redirect("/");
+        }
+
+        if (results[0].user_id !== req.session.user.user_id) {
+            req.flash("error", "You do not have permission to update this report.");
+            return res.redirect("/reports/" + reportId);
+        }
+
+        let sql;
+        let values;
+
+        if (req.file) {
+            sql = `
+                UPDATE reports
+                SET report_type=?,
+                    item_name=?,
+                    description=?,
+                    category_id=?,
+                    location_id=?,
+                    date_lost_found=?,
+                    image=?
+                WHERE report_id=?`;
+
+            values = [
+                report_type,
+                item_name,
+                description,
+                category_id,
+                location_id,
+                date_lost_found,
+                req.file.filename,
+                reportId
+            ];
+        } else {
+            sql = `
+                UPDATE reports
+                SET report_type=?,
+                    item_name=?,
+                    description=?,
+                    category_id=?,
+                    location_id=?,
+                    date_lost_found=?
+                WHERE report_id=?`;
+
+            values = [
+                report_type,
+                item_name,
+                description,
+                category_id,
+                location_id,
+                date_lost_found,
+                reportId
+            ];
+        }
+
+        db.query(sql, values, (err) => {
+            if (err) return dbError(res, err);
+
+            req.flash("success", "Report updated successfully.");
+            res.redirect("/reports/" + reportId);
+        });
     });
 });
-// Delete Report
+// Delete Report (Ahmad)
+// Only the report owner can delete their own reports.
 app.post('/reports/delete/:id', checkAuthenticated, (req, res) => {
     const reportId = req.params.id;
 
-    const sql = "DELETE FROM reports WHERE report_id = ?";
+    const checkOwnershipSql = "SELECT user_id FROM reports WHERE report_id = ?";
+    db.query(checkOwnershipSql, [reportId], (err, results) => {
+        if (err) return dbError(res, err);
 
-    db.query(sql, [reportId], (err) => {
-        if (err) {
-            return dbError(res, err);
+        if (results.length === 0) {
+            req.flash("error", "Report not found.");
+            return res.redirect("/");
         }
 
-        req.flash("success", "Report deleted successfully.");
-        res.redirect("/reports");
+        if (results[0].user_id !== req.session.user.user_id) {
+            req.flash("error", "You do not have permission to delete this report.");
+            return res.redirect("/reports/" + reportId);
+        }
+
+        const sql = "DELETE FROM reports WHERE report_id = ?";
+        db.query(sql, [reportId], (err) => {
+            if (err) return dbError(res, err);
+
+            req.flash("success", "Report deleted successfully.");
+            res.redirect("/reports");
+        });
     });
 });
 
-// Admin Claim Edit
+// Admin Claim Edit (Ahmad)
+// Shows the edit form for a specific claim. Only accessible by admins.
 app.get("/admin/claims/update/:id", checkAuthenticated, checkAdmin, (req, res) => {
     const sql = `
         SELECT c.*, r.item_name
@@ -375,6 +421,8 @@ app.get("/admin/claims/update/:id", checkAuthenticated, checkAdmin, (req, res) =
     });
 });
 
+// Handle claim update by admin (Ahmad)
+// Allows updating claim message, status, and optionally the proof image.
 app.post("/admin/claims/update/:id", checkAuthenticated, checkAdmin, upload.single("image"), (req, res) => {    const { claim_message, status } = req.body;
 
     let sql;
@@ -404,7 +452,7 @@ app.post("/admin/claims/update/:id", checkAuthenticated, checkAdmin, upload.sing
     });
 });
 
-//Admin Claim Delete
+// Admin Claim Delete (Ahmad)
 app.post('/admin/claims/delete/:id', checkAuthenticated, checkAdmin, (req, res) => {
     const claimId = req.params.id;
 
@@ -421,8 +469,12 @@ app.post('/admin/claims/delete/:id', checkAuthenticated, checkAdmin, (req, res) 
 });
 // Part C Done.
 
-// Part C.5 Adding and editing of location and category
-// Showing of locations and categories
+// Part C.5 Adding and editing of location and category (Ahmad)
+// These routes handle CRUD operations for locations and categories used in reports.
+
+// ---------- LOCATION ROUTES ----------
+
+// Show all locations in admin table.
 app.get("/admin/locations", checkAuthenticated, checkAdmin, (req, res) => {
 
     const sql = "SELECT * FROM locations ORDER BY name";
@@ -440,6 +492,7 @@ app.get("/admin/locations", checkAuthenticated, checkAdmin, (req, res) => {
 
 });
 
+// Show all categories in admin table.
 app.get("/admin/categories", checkAuthenticated, checkAdmin, (req, res) => {
 
     const sql = "SELECT * FROM categories ORDER BY name";
@@ -458,7 +511,7 @@ app.get("/admin/categories", checkAuthenticated, checkAdmin, (req, res) => {
 });
 
 
-// Adding locations
+// Add Location form (Ahmad)
 app.get("/admin/locations/add", checkAuthenticated, checkAdmin, (req, res) => {
     res.render("locationForm", {
         user: req.session.user,
@@ -469,6 +522,7 @@ app.get("/admin/locations/add", checkAuthenticated, checkAdmin, (req, res) => {
     });
 });
 
+// Handle location creation (Ahmad)
 app.post("/admin/locations/add", checkAuthenticated, checkAdmin, (req, res) => {
     const { name } = req.body;
 
@@ -481,7 +535,7 @@ app.post("/admin/locations/add", checkAuthenticated, checkAdmin, (req, res) => {
         res.redirect("/admin/locations");
     });
 });
-// Update locations
+// Update Location form (Ahmad)
 app.get("/admin/locations/update/:id", checkAuthenticated, checkAdmin, (req, res) => {
 
     const sql = "SELECT * FROM locations WHERE location_id = ?";
@@ -507,6 +561,7 @@ app.get("/admin/locations/update/:id", checkAuthenticated, checkAdmin, (req, res
 
 });
 
+// Handle location update (Ahmad)
 app.post("/admin/locations/update/:id", checkAuthenticated, checkAdmin, (req, res) => {
 
     const { name } = req.body;
@@ -522,7 +577,7 @@ app.post("/admin/locations/update/:id", checkAuthenticated, checkAdmin, (req, re
 
 });
 
-// Delete locations
+// Delete Location (Ahmad)
 app.post("/admin/locations/delete/:id", checkAuthenticated, checkAdmin, (req, res) => {
     const locationId = req.params.id;
 
@@ -538,7 +593,7 @@ app.post("/admin/locations/delete/:id", checkAuthenticated, checkAdmin, (req, re
     });
 });
 
-// Add Category
+// Add Category form (Ahmad)
 app.get("/admin/categories/add", checkAuthenticated, checkAdmin, (req, res) => {
     res.render("categoryForm", {
           user: req.session.user,
@@ -549,6 +604,7 @@ app.get("/admin/categories/add", checkAuthenticated, checkAdmin, (req, res) => {
       });
     });
 
+// Handle category creation (Ahmad)
 app.post("/admin/categories/add", checkAuthenticated, checkAdmin, (req, res) => {
     const { name } = req.body;
 
@@ -562,7 +618,7 @@ app.post("/admin/categories/add", checkAuthenticated, checkAdmin, (req, res) => 
     });
 });
 
-// Update Category
+// Update Category form (Ahmad)
 app.get("/admin/categories/update/:id", checkAuthenticated, checkAdmin, (req, res) => {
 
     const sql = "SELECT * FROM categories WHERE category_id = ?";
@@ -585,6 +641,7 @@ app.get("/admin/categories/update/:id", checkAuthenticated, checkAdmin, (req, re
     });
 });
 
+// Handle category update (Ahmad)
 app.post("/admin/categories/update/:id", checkAuthenticated, checkAdmin, (req, res) => {
 
     const { name } = req.body;
@@ -600,7 +657,7 @@ app.post("/admin/categories/update/:id", checkAuthenticated, checkAdmin, (req, r
 
 });
 
-// Delete Category
+// Delete Category (Ahmad)
 app.post("/admin/categories/delete/:id", checkAuthenticated, checkAdmin, (req, res) => {
     const categoryId = req.params.id;
 
@@ -627,7 +684,8 @@ app.post("/admin/categories/delete/:id", checkAuthenticated, checkAdmin, (req, r
 // #####                     (Alvin, 25038212)                    #####
 // #####################################################################
 
-// ---------- STUDENT: show the "submit a claim" form for a found item ----------
+// ---------- STUDENT: show the "submit a claim" form for a found item (Alvin, 25038212) ----------
+// Only accessible by non-admin users. Shows the claim form for a specific Found report.
 app.get('/user/claims/submit/:reportId', checkAuthenticated, (req, res) => {
   // Admins manage claims - they don't submit them.
   if (req.session.user.role === 'admin') {
@@ -650,7 +708,8 @@ app.get('/user/claims/submit/:reportId', checkAuthenticated, (req, res) => {
   });
 });
 
-// ---------- STUDENT: handle the claim submission ----------
+// ---------- STUDENT: handle the claim submission (Alvin, 25038212) ----------
+// Validates: message and image required, report must be Open, no duplicate claims.
 app.post('/user/claims/submit/:reportId', checkAuthenticated, upload.single('image'), (req, res) => {
   // Admins manage claims - they don't submit them.
   if (req.session.user.role === 'admin') {
@@ -680,8 +739,9 @@ app.post('/user/claims/submit/:reportId', checkAuthenticated, upload.single('ima
       return res.redirect('/');
     }
 
-    // Prevent the same user from claiming the same item more than once.
-    db.query('SELECT claim_id FROM claims WHERE report_id = ? AND user_id = ?', [reportId, userId], (dupErr, existing) => {
+// Prevent duplicate claims: each user can only claim a report once.
+// This query checks if the user already has any claim (Pending/Approved/Rejected) for this report.
+db.query('SELECT claim_id FROM claims WHERE report_id = ? AND user_id = ?', [reportId, userId], (dupErr, existing) => {
       if (dupErr) return dbError(res, dupErr);
       if (existing.length > 0) {
         req.flash('error', 'You have already submitted a claim for this item.');
@@ -705,6 +765,7 @@ app.post('/user/claims/submit/:reportId', checkAuthenticated, upload.single('ima
 // PART B - CREATE AND VIEW REPORTS (Benny)
 // =====================================================================
 
+// Show the "Create Report" form with categories and locations for dropdowns.
 app.get('/reports/new', checkAuthenticated, (req, res) => {
   const categorySql =
     'SELECT category_id, name FROM categories ORDER BY name';
@@ -734,6 +795,11 @@ app.get('/reports/new', checkAuthenticated, (req, res) => {
   });
 });
 
+// Handle report creation with validation:
+// - All fields required
+// - Date cannot be in the future
+// - Category and location must exist in the database
+// - Item name max 150 characters
 app.post('/reports/new', checkAuthenticated, upload.single('image'), (req, res) => {
   const {
     report_type,
@@ -853,22 +919,6 @@ app.post('/reports/new', checkAuthenticated, upload.single('image'), (req, res) 
 });
 
 // PART D - SEARCH, FILTER & CATEGORIES (May) - runs on the /reports page
-const reportsSql = `
-  SELECT
-    r.*,
-    c.name AS category_name,
-    l.name AS location_name,
-    u.username AS reporter_name
-  FROM reports r
-  LEFT JOIN categories c
-    ON r.category_id = c.category_id
-  LEFT JOIN locations l
-    ON r.location_id = l.location_id
-  LEFT JOIN users u
-    ON r.user_id = u.user_id
-  ORDER BY r.created_at DESC
-`;
-
 app.get('/', (req, res) => {
   // PART D - Default to showing only Open reports (May)
   const defaultSql = `
@@ -927,7 +977,8 @@ app.post('/', (req, res) => {
   const status     = req.body.status;
   const sort       = req.body.sort || 'newest';
 
-  // PART D - SQL with optional status filter (May): "All" shows everything, otherwise filter by selected status
+  // Build SQL with optional WHERE clause based on filters.
+  // Status filter is applied in SQL for efficiency; other filters are applied in-memory.
   let filteredSql = `
     SELECT
       r.*,
@@ -954,8 +1005,9 @@ app.post('/', (req, res) => {
   db.query(filteredSql, params, (err, reports) => {
     if (err) return dbError(res, err);
 
-    // PART D - SEARCH (May): keyword match on item name OR description
-    let results = reports.filter(report => {
+  // In-memory filtering for search text, type, category, and location.
+  // Note: For large datasets, these filters should be moved to SQL WHERE clauses.
+  let results = reports.filter(report => {
       return report.item_name.toLowerCase().includes(searchText) ||
              (report.description || '').toLowerCase().includes(searchText);
     });
@@ -1014,6 +1066,8 @@ app.post('/', (req, res) => {
 
 // END OF PART D (May)
 
+// ---------- VIEW MY REPORTS (Benny) ----------
+// Shows all reports created by the logged-in user, with category and location names.
 app.get('/user/reports', checkAuthenticated, (req, res) => {
   const sql = `
     SELECT
@@ -1043,6 +1097,14 @@ app.get('/user/reports', checkAuthenticated, (req, res) => {
   });
 });
 
+// ---------- VIEW REPORT DETAILS (Benny) ----------
+// Shows full report info and contextual action buttons:
+// - Guest: "Login to claim" / "Login to notify" (disabled)
+// - Owner of Found: "Cannot claim own report" (disabled)
+// - Owner of Lost: "Mark as Recovered" button
+// - Admin: "Admin cannot claim" (disabled)
+// - Other user on Found: "Claim This Item" (if not already claimed)
+// - Other user on Lost: "I Found This Item"
 app.get('/reports/:id', (req, res) => {
   const reportId = req.params.id;
 
@@ -1088,7 +1150,8 @@ app.get('/reports/:id', (req, res) => {
   });
 });
 
-// -------Add lost-item notification routes (show "I Found This Item" form)
+//------- Show "I Found This Item" form (Ahmad) -------
+// Validates: report must be Lost, Open, and not owned by the finder.
 app.get(
   '/user/lost-item-alerts/submit/:reportId',
   checkAuthenticated,
@@ -1129,6 +1192,7 @@ app.get(
 
       res.render('userSubmitFoundNotification', {
         report,
+        user: req.session.user,
         messages: req.flash('success'),
         errors: req.flash('error')
       });
@@ -1136,8 +1200,9 @@ app.get(
   }
 );
 
-//------ Save the notification------------
-
+//------ Save the notification (Ahmad) ------------
+// Saves a new found_notification with status 'Pending'.
+// Validates: message >= 10 chars, report exists/is Open/Lost, not self-notification, no duplicate.
 app.post(
   '/user/lost-item-alerts/submit/:reportId',
   checkAuthenticated,
@@ -1184,13 +1249,14 @@ app.post(
         return res.redirect('/reports/' + reportId);
       }
 
-      const duplicateSql = `
-        SELECT notification_id
-        FROM found_notifications
-        WHERE report_id = ?
-          AND finder_id = ?
-          AND status = 'Pending'
-      `;
+  // Prevent duplicate notifications: each finder can only send one pending notification per report.
+  const duplicateSql = `
+    SELECT notification_id
+    FROM found_notifications
+    WHERE report_id = ?
+      AND finder_id = ?
+      AND status = 'Pending'
+  `;
 
       db.query(
         duplicateSql,
@@ -1232,7 +1298,9 @@ app.post(
   }
 );
 
-//----Display notification received by owner---------
+//------- Display "I Found This Item" notifications received by owner (Ahmad) ---------
+// Shows all found_notifications where the logged-in user is the report owner.
+// Sorted by Pending first, then by newest.
 app.get(
   '/user/lost-item-alerts',
   checkAuthenticated,
@@ -1259,6 +1327,7 @@ app.get(
 
       res.render('userLostItemAlerts', {
         notifications,
+        user: req.session.user,
         messages: req.flash('success'),
         errors: req.flash('error')
       });
@@ -1266,8 +1335,11 @@ app.get(
   }
 );
 
-//------Owner confirms the item was recovered ----
-
+//------ Owner confirms the item was recovered (Ahmad) ----
+// When owner confirms a notification:
+// 1. Mark the notification as 'Confirmed'
+// 2. Dismiss all other pending notifications for the same report
+// 3. Mark the report as 'Resolved'
 app.post(
   '/user/lost-item-alerts/:notificationId/confirm',
   checkAuthenticated,
@@ -1303,11 +1375,12 @@ app.post(
         return res.redirect('/user/lost-item-alerts');
       }
 
-      if (
-        notification.report_type !== 'Lost' ||
-        notification.report_status !== 'Open' ||
-        notification.notification_status !== 'Pending'
-      ) {
+  // Validate: notification must exist, report must be Open/Lost, and must be Pending
+  if (
+    notification.report_type !== 'Lost' ||
+    notification.report_status !== 'Open' ||
+    notification.notification_status !== 'Pending'
+  ) {
         req.flash('error', 'This notification can no longer be confirmed.');
         return res.redirect('/user/lost-item-alerts');
       }
@@ -1322,6 +1395,7 @@ app.post(
         (confirmError) => {
           if (confirmError) return dbError(res, confirmError);
 
+          // Step 2: Dismiss all OTHER pending notifications for this report
           db.query(
             `
               UPDATE found_notifications
@@ -1334,6 +1408,7 @@ app.post(
             (dismissError) => {
               if (dismissError) return dbError(res, dismissError);
 
+              // Step 3: Mark the report as Resolved
               db.query(
                 `
                   UPDATE reports
@@ -1361,7 +1436,9 @@ app.post(
 );
 
 
-// --------Owner dismisses an incorrect notification-------
+//-------- Owner dismisses an incorrect notification (Ahmad) -------
+// Owner can dismiss a notification if they believe the finder is mistaken.
+// Only Pending notifications can be dismissed.
 app.post(
   '/user/lost-item-alerts/:notificationId/dismiss',
   checkAuthenticated,
@@ -1413,7 +1490,12 @@ app.post(
   }
 );
 
-//------"Mark as Recovered (owner may recover an item by himself)"
+//------ Mark as Recovered (Alvin) - owner may recover an item by themselves ------
+// Allows the report owner to mark their own Lost report as Resolved.
+// The SQL WHERE clause ensures:
+// - Report belongs to the logged-in user
+// - Report type is 'Lost' (not 'Found')
+// - Report is still 'Open' (not already resolved)
 app.post(
   '/reports/:id/mark-recovered',
   checkAuthenticated,
@@ -1452,7 +1534,7 @@ app.post(
 );
 
 
-// ---------- STUDENT: view my own claims and their status ----------
+// ---------- STUDENT: view my own claims and their status (Alvin, 25038212) ----------
 app.get('/user/claims', checkAuthenticated, (req, res) => {
   const sql = `SELECT c.*, r.item_name, r.report_type, r.image AS report_image
                FROM claims c
@@ -1470,7 +1552,8 @@ app.get('/user/claims', checkAuthenticated, (req, res) => {
   });
 });
 
-// ---------- ADMIN: view and manage all claims ----------
+// ---------- ADMIN: view and manage all claims (Alvin, 25038212) ----------
+// Sorted by Pending first (using expression in ORDER BY), then by newest.
 app.get('/admin/claims', checkAuthenticated, checkAdmin, (req, res) => {
   const sql = `SELECT c.*, r.item_name, r.image AS report_image, u.username, u.email
                FROM claims c
@@ -1488,7 +1571,12 @@ app.get('/admin/claims', checkAuthenticated, checkAdmin, (req, res) => {
   });
 });
 
-// ---------- ADMIN: approve a claim (the main enhancement) ----------
+// ---------- ADMIN: approve a claim (Alvin, 25038212) ----------
+// Approving a claim triggers a cascade:
+// 1. Find the claim to get the report_id
+// 2. Set this claim to 'Approved'
+// 3. Auto-reject all OTHER pending claims for the same report
+// 4. Mark the report as 'Resolved'
 app.post('/admin/claims/:claimId/approve', checkAuthenticated, checkAdmin, (req, res) => {
   const claimId = req.params.claimId;
 
@@ -1522,7 +1610,7 @@ app.post('/admin/claims/:claimId/approve', checkAuthenticated, checkAdmin, (req,
   });
 });
 
-// ---------- ADMIN: reject a single claim (with a reason) ----------
+// ---------- ADMIN: reject a single claim with a reason (Alvin, 25038212) ----------
 app.post('/admin/claims/:claimId/reject', checkAuthenticated, checkAdmin, (req, res) => {
   // The admin can type a reason in the reject form; store it so the student
   // can see why their claim was rejected. Empty reason is stored as null.
@@ -1535,7 +1623,7 @@ app.post('/admin/claims/:claimId/reject', checkAuthenticated, checkAdmin, (req, 
     });
 });
 
-// ---------- ADMIN: view and manage all users ----------
+// ---------- ADMIN: view and manage all users (Xavier) ----------
 app.get('/admin/users', checkAuthenticated, checkAdmin, (req, res) => {
   const sql = 'SELECT user_id, username, email, role, created_at FROM users ORDER BY created_at DESC';
   db.query(sql, (err, users) => {
@@ -1549,7 +1637,8 @@ app.get('/admin/users', checkAuthenticated, checkAdmin, (req, res) => {
   });
 });
 
-// ---------- ADMIN: change a user's role ----------
+// ---------- ADMIN: change a user's role (Xavier) ----------
+// Validates the role is either 'user' or 'admin', and prevents self-demotion.
 app.post('/admin/users/:userId/role', checkAuthenticated, checkAdmin, (req, res) => {
   const userId = req.params.userId;
   const newRole = req.body.role;
@@ -1572,11 +1661,28 @@ app.post('/admin/users/:userId/role', checkAuthenticated, checkAdmin, (req, res)
   });
 });
 
+// ---------- ADMIN: delete a user account (Xavier) ----------
+// Prevents admin from deleting their own account.
+app.post('/admin/users/:userId/delete', checkAuthenticated, checkAdmin, (req, res) => {
+  const userId = req.params.userId;
+
+  if (parseInt(userId) === req.session.user.user_id) {
+    req.flash('error', 'You cannot delete your own account.');
+    return res.redirect('/admin/users');
+  }
+
+  db.query('DELETE FROM users WHERE user_id = ?', [userId], (err) => {
+    if (err) return dbError(res, err);
+    req.flash('success', 'User account deleted.');
+    res.redirect('/admin/users');
+  });
+});
+
 // #####################################################################
 // #####                   END OF PART E                          #####
 // #####################################################################
 
-// ---------- Start the server ----------
+// ---------- Start the server (Xavier) ----------
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`Server running at http://localhost:${PORT}`);

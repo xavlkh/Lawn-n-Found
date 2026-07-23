@@ -62,14 +62,14 @@
                 <td><%= new Date(claim.created_at).toLocaleString('en-SG', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' }) %></td>
                 <td>
                   <% if (claim.status === 'Pending') { %>
-                    <form action="/admin/claims/<%= claim.claim_id %>/approve" method="POST" class="mb-2">
-                      <button type="submit" class="btn btn-success btn-sm">Approve</button>
-                    </form>
-                    <form action="/admin/claims/<%= claim.claim_id %>/reject" method="POST">
-                      <label for="reject_reason_<%= claim.claim_id %>" class="form-label small text-muted mb-1">Rejection reason (optional)</label>
-                      <input type="text" id="reject_reason_<%= claim.claim_id %>" name="reject_reason" class="form-control form-control-sm text-truncate" placeholder="e.g. Insufficient proof" style="max-width: 100%; overflow: hidden; text-overflow: ellipsis;">
-                      <button type="submit" class="btn btn-danger btn-sm mt-1">Reject</button>
-                    </form>
+                    <div class="table-action">
+                      <form action="/admin/claims/<%= claim.claim_id %>/approve" method="POST" class="d-inline m-0">
+                        <button type="submit" class="btn btn-success btn-sm">Approve</button>
+                      </form>
+                      <form action="/admin/claims/<%= claim.claim_id %>/reject" method="POST" class="d-inline m-0">
+                        <button type="submit" class="btn btn-danger btn-sm">Reject</button>
+                      </form>
+                    </div>
                   <% } else if (claim.status === 'Rejected') { %>
                     <% if (claim.reject_reason) { %>
                       <span class="text-danger small"><%= claim.reject_reason %></span>
@@ -81,13 +81,11 @@
                   <% } %>
                 </td>
                 <td>
-                    <div class="d-flex flex-wrap gap-2">
-
+                    <div class="table-action">
                         <a href="/admin/claims/update/<%= claim.claim_id %>"
                           class="btn btn-warning btn-sm">
                             Update
                         </a>
-
                         <form action="/admin/claims/delete/<%= claim.claim_id %>"
                               method="POST"
                               class="m-0">
@@ -97,7 +95,6 @@
                                 Delete
                             </button>
                         </form>
-
                     </div>
                 </td>
               </tr>
@@ -108,5 +105,6 @@
     <% } %>
     <div class="mb-4 pb-4"></div>
   </div>
+<%- include('partials/footer') %>
 </body>
 </html>
