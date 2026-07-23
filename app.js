@@ -422,6 +422,42 @@ app.post('/admin/claims/delete/:id', checkAuthenticated, checkAdmin, (req, res) 
 // Part C Done.
 
 // Part C.5 Adding and editing of location and category
+// Showing of locations and categories
+app.get("/admin/locations", checkAuthenticated, checkAdmin, (req, res) => {
+
+    const sql = "SELECT * FROM locations ORDER BY name";
+
+    db.query(sql, (err, results) => {
+        if (err) return dbError(res, err);
+
+        res.render("adminLocations", {
+            user: req.session.user,
+            locations: results,
+            messages: req.flash("success"),
+            errors: req.flash("error")
+        });
+    });
+
+});
+
+app.get("/admin/categories", checkAuthenticated, checkAdmin, (req, res) => {
+
+    const sql = "SELECT * FROM categories ORDER BY name";
+
+    db.query(sql, (err, results) => {
+        if (err) return dbError(res, err);
+
+        res.render("adminCategories", {
+            user: req.session.user,
+            categories: results,
+            messages: req.flash("success"),
+            errors: req.flash("error")
+        });
+    });
+
+});
+
+
 // Adding locations
 app.get("/admin/locations/add", checkAuthenticated, checkAdmin, (req, res) => {
     res.render("locationForm", {
@@ -471,6 +507,37 @@ app.get("/admin/locations/update/:id", checkAuthenticated, checkAdmin, (req, res
 
 });
 
+app.post("/admin/locations/update/:id", checkAuthenticated, checkAdmin, (req, res) => {
+
+    const { name } = req.body;
+
+    const sql = "UPDATE locations SET name = ? WHERE location_id = ?";
+
+    db.query(sql, [name, req.params.id], (err) => {
+        if (err) return dbError(res, err);
+
+        req.flash("success", "Location updated successfully.");
+        res.redirect("/admin/locations");
+    });
+
+});
+
+// Delete locations
+app.post("/admin/locations/delete/:id", checkAuthenticated, checkAdmin, (req, res) => {
+    const locationId = req.params.id;
+
+    const sql = "DELETE FROM locations WHERE location_id = ?";
+
+    db.query(sql, [locationId], (err) => {
+        if (err) {
+            return dbError(res, err);
+        }
+
+        req.flash("success", "Location deleted successfully.");
+        res.redirect("/admin/locations");
+    });
+});
+
 // Add Category
 app.get("/admin/categories/add", checkAuthenticated, checkAdmin, (req, res) => {
     res.render("categoryForm", {
@@ -517,6 +584,38 @@ app.get("/admin/categories/update/:id", checkAuthenticated, checkAdmin, (req, re
       });
     });
 });
+
+app.post("/admin/categories/update/:id", checkAuthenticated, checkAdmin, (req, res) => {
+
+    const { name } = req.body;
+
+    const sql = "UPDATE categories SET name = ? WHERE category_id = ?";
+
+    db.query(sql, [name, req.params.id], (err) => {
+        if (err) return dbError(res, err);
+
+        req.flash("success", "Category updated successfully.");
+        res.redirect("/admin/categories");
+    });
+
+});
+
+// Delete Category
+app.post("/admin/categories/delete/:id", checkAuthenticated, checkAdmin, (req, res) => {
+    const categoryId = req.params.id;
+
+    const sql = "DELETE FROM categories WHERE category_id = ?";
+
+    db.query(sql, [categoryId], (err) => {
+        if (err) {
+            return dbError(res, err);
+        }
+
+        req.flash("success", "Category deleted successfully.");
+        res.redirect("/admin/categories");
+    });
+});
+
 //End of C.5 done by ahmad
 
 // PART D (search / filter / categories) is implemented on the homepage

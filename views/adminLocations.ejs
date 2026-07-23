@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <%- include('partials/head') %>
+  <title>Manage Locations</title>
+</head>
+<body>
+
+<%- include('partials/navbar') %>
+
+<div class="container mt-4">
+  <%- include('partials/messages') %>
+
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+      <h2 class="mb-1">Manage Locations</h2>
+      <p class="text-muted mb-0">
+        Add, update and delete item locations.
+      </p>
+    </div>
+
+    <a href="/admin/locations/add" class="btn btn-primary">
+      <i class="bi bi-plus-circle"></i> Add Location
+    </a>
+  </div>
+
+  <% if (locations.length === 0) { %>
+
+    <div class="alert alert-info">
+      No locations found.
+    </div>
+
+  <% } else { %>
+
+    <div class="table-responsive">
+      <table class="table table-striped align-middle">
+
+        <thead class="table-dark">
+          <tr>
+            <th>ID</th>
+            <th>Locations Name</th>
+            <th style="width:180px;">Action</th>
+          </tr>
+        </thead>
+
+        <tbody>
+
+          <% locations.forEach(location => { %>
+
+            <tr>
+
+              <td><%= location.location_id %></td>
+
+              <td><%= location.name %></td>
+
+              <td>
+                <div class="d-flex gap-2">
+
+                  <a
+                    href="/admin/locations/update/<%= location.location_id %>"
+                    class="btn btn-warning btn-sm">
+                    Update
+                  </a>
+
+                  <form
+                    action="/admin/locations/delete/<%= location.location_id %>"
+                    method="POST"
+                    class="d-inline">
+
+                    <button
+                      type="submit"
+                      class="btn btn-danger btn-sm"
+                      onclick="return confirm('Delete this category?');">
+
+                      Delete
+
+                    </button>
+
+                  </form>
+
+                </div>
+              </td>
+
+            </tr>
+
+          <% }) %>
+
+        </tbody>
+
+      </table>
+    </div>
+
+  <% } %>
+
+</div>
+
+</body>
+</html>

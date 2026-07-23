@@ -1,6 +1,16 @@
 <!DOCTYPE html>
 <html lang="en">
+    <head>
+        <%- include('partials/head') %>
+        <title><%= isEdit ? "Update Category" : "Add Category" %></title>
+    </head>
     <body>
+
+        <%- include('partials/navbar') %>
+
+        <div class="container mt-4">
+            <%- include('partials/messages') %>
+
         <h2><%= isEdit ? "Update Category" : "Add Category" %></h2>
 
         <form action="<%= isEdit ? '/admin/categories/update/' + category.category_id : '/admin/categories/add' %>"
