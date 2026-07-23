@@ -9,6 +9,7 @@ A campus lost-and-found portal for Republic Polytechnic students to report, sear
 [![EJS](https://img.shields.io/badge/EJS-6.x-a91e50?style=flat-square)](https://ejs.co)
 [![MySQL](https://img.shields.io/badge/MySQL-8.x-4479A1?style=flat-square&logo=mysql&logoColor=white)](https://www.mysql.com)
 [![License](https://img.shields.io/badge/License-MIT-blue?style=flat-square)](LICENSE)
+[![Live Preview](https://img.shields.io/badge/Live_Preview-Render-46d369?style=flat-square&logo=render&logoColor=white)](https://lawn-n-found.onrender.com)
 
 [Features](#features) | [Tech Stack](#tech-stack) | [Self-Host Guide](#self-host-guide) | [Deployment](#deployment) | [Project Structure](#project-structure)
 
