@@ -223,7 +223,7 @@ app.get('/logout', (req, res) => {
 });
 
 
-// Part C - Update and Delete Reports - Done by Ahmad.\\
+// Part C - Update and Delete Reports/Claims - Done by Ahmad.\\
 // Update User report
 app.get('/update/:id', checkAuthenticated, (req, res) => {
     const reportId = req.params.id;
@@ -420,6 +420,104 @@ app.post('/admin/claims/delete/:id', checkAuthenticated, checkAdmin, (req, res) 
     });
 });
 // Part C Done.
+
+// Part C.5 Adding and editing of location and category
+// Adding locations
+app.get("/admin/locations/add", checkAuthenticated, checkAdmin, (req, res) => {
+    res.render("locationForm", {
+        user: req.session.user,
+        isEdit: false,
+        location: {},
+        messages: req.flash("success"),
+        errors: req.flash("error")
+    });
+});
+
+app.post("/admin/locations/add", checkAuthenticated, checkAdmin, (req, res) => {
+    const { name } = req.body;
+
+    const sql = "INSERT INTO locations (name) VALUES (?)";
+
+    db.query(sql, [name], (err) => {
+        if (err) return dbError(res, err);
+
+        req.flash("success", "Location added successfully.");
+        res.redirect("/admin/locations");
+    });
+});
+// Update locations
+app.get("/admin/locations/update/:id", checkAuthenticated, checkAdmin, (req, res) => {
+
+    const sql = "SELECT * FROM locations WHERE location_id = ?";
+
+    db.query(sql, [req.params.id], (err, results) => {
+
+        if (err) return dbError(res, err);
+
+        if (results.length === 0) {
+            req.flash("error", "Location not found.");
+            return res.redirect("/admin/locations");
+        }
+
+        res.render("locationForm", {
+            user: req.session.user,
+            isEdit: true,
+            location: results[0],
+            messages: req.flash("success"),
+            errors: req.flash("error")
+        });
+
+    });
+
+});
+
+// Add Category
+app.get("/admin/categories/add", checkAuthenticated, checkAdmin, (req, res) => {
+    res.render("categoryForm", {
+          user: req.session.user,
+          isEdit: false,
+          category: {},
+          messages: req.flash("success"),
+          errors: req.flash("error")
+      });
+    });
+
+app.post("/admin/categories/add", checkAuthenticated, checkAdmin, (req, res) => {
+    const { name } = req.body;
+
+    const sql = "INSERT INTO categories (name) VALUES (?)";
+
+    db.query(sql, [name], (err) => {
+        if (err) return dbError(res, err);
+
+        req.flash("success", "Category added successfully.");
+        res.redirect("/admin/categories");
+    });
+});
+
+// Update Category
+app.get("/admin/categories/update/:id", checkAuthenticated, checkAdmin, (req, res) => {
+
+    const sql = "SELECT * FROM categories WHERE category_id = ?";
+
+    db.query(sql, [req.params.id], (err, results) => {
+        if (err) return dbError(res, err);
+
+        if (results.length === 0) {
+            req.flash("error", "Category not found.");
+            return res.redirect("/admin/categories");
+        }
+
+        res.render("categoryForm", {
+          user: req.session.user,
+          isEdit: true,
+          category: results[0],
+          messages: req.flash("success"),
+          errors: req.flash("error")
+      });
+    });
+});
+//End of C.5 done by ahmad
 
 // PART D (search / filter / categories) is implemented on the homepage
 // GET / and POST / routes (May). The old /search routes were removed as dead code.

@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+    <body>
+        <h2><%= isEdit ? "Update Location" : "Add Location" %></h2>
+
+        <form action="<%= isEdit ? '/admin/locations/update/' + location.location_id : '/admin/locations/add' %>"
+              method="POST">
+
+            <div class="mb-3">
+                <label class="form-label">Location Name</label>
+
+                <input
+                    type="text"
+                    name="name"
+                    class="form-control"
+                    value="<%= isEdit ? location.name : '' %>"
+                    required>
+            </div>
+
+            <button class="btn btn-primary">
+                <%= isEdit ? "Update Location" : "Add Location" %>
+            </button>
+
+            <a href="/admin/locations" class="btn btn-secondary">
+                Cancel
+            </a>
+
+        </form>
+    </body>
+</html>
