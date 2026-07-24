@@ -177,14 +177,26 @@ app.post('/register', validateRegistration, (req, res) => {
     const role = 'user'
     const { username, email, password } = req.body;
 
-    const sql = 'INSERT INTO users (username, email, password, role) VALUES (?, ?, SHA1(?), ?)';
-    db.query(sql, [username, email, password, role], (err, result) => {
+    const checkSql = 'SELECT COUNT(*) AS count FROM users WHERE email = ? OR username = ?';
+    db.query(checkSql, [email, username], (err, results) => {
         if (err) {
             throw err;
         }
-        console.log(result);
-        req.flash('success', 'Registration successful! Please log in.');
-        res.redirect('/login');
+        if (results[0].count > 0) {
+            req.flash('error', 'Email or username is already taken.');
+            req.flash('formData', req.body);
+            return res.redirect('/register');
+        }
+
+        const sql = 'INSERT INTO users (username, email, password, role) VALUES (?, ?, SHA1(?), ?)';
+        db.query(sql, [username, email, password, role], (err, result) => {
+            if (err) {
+                throw err;
+            }
+            console.log(result);
+            req.flash('success', 'Registration successful! Please log in.');
+            res.redirect('/login');
+        });
     });
 });
 
